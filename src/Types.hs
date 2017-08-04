@@ -23,7 +23,15 @@ data Site = Site
 data River = River
   { source :: SiteID
   , target :: SiteID
-  } deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON) -- TODO: custom Eq, Ord
+  } deriving (Show, Generic, FromJSON, ToJSON)
+
+instance Eq River where
+  (==) (River s t) (River s' t') = (s, t) == (s', t') || (s, t) == (t', s')
+
+instance Ord River where
+  (<=) r1 r2 = minRiver r1 <= minRiver r2
+    where
+      minRiver (River s t) = minimum [(s, t), (t, s)]
 
 data Map = Map
   { sites :: Set Site
