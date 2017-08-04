@@ -19,12 +19,12 @@ mapToSvg :: Map -> S.Svg
 mapToSvg mapToRender =
   S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" !
   A.viewbox (viewboxAttrs mapToRender) $
-  mapM_ siteToSvg (sites mapToRender)
+  mapM_ (siteToSvg $ mines mapToRender) $ sites mapToRender
 
-siteToSvg :: Site -> S.Svg
-siteToSvg site =
+siteToSvg :: Set.Set SiteID -> Site -> S.Svg
+siteToSvg mineIDs site =
   S.circle ! A.cx (S.toValue $ x site) ! A.cy (S.toValue $ y site) ! A.r "0.1" !
-  A.fill "#008d46"
+  A.fill (colourForSite mineIDs site)
 
 viewboxAttrs :: Map -> S.AttributeValue
 viewboxAttrs m =
@@ -60,6 +60,18 @@ ys m = Set.map y $ sites m
 padding :: Double
 padding = 10.0
 
+colourForSite :: Set.Set SiteID -> Site -> S.AttributeValue
+colourForSite mineIDs site =
+  if Set.member (Types.id site) mineIDs
+    then mineColour
+    else siteColour
+
+mineColour :: S.AttributeValue
+mineColour = "#DBAFC1"
+
+siteColour :: S.AttributeValue
+siteColour = "#B8BDB5"
+
 sampleMap :: Map
 sampleMap =
   Map
@@ -75,5 +87,5 @@ sampleMap =
         , Site {Types.id = 7, x = 0.0, y = -1.0}
         ]
   , rivers = Set.empty
-  , mines = Set.empty
+  , mines = Set.fromList [1, 5]
   }
