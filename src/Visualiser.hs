@@ -40,16 +40,22 @@ height :: Map -> Double
 height m = maxY m - minY m
 
 minX :: Map -> Double
-minX m = minimum (Set.map x $ sites m)
+minX m = minimum $ xs m
 
 maxX :: Map -> Double
-maxX m = maximum (Set.map x $ sites m)
+maxX m = maximum $ xs m
 
 minY :: Map -> Double
-minY m = minimum (Set.map y $ sites m)
+minY m = minimum $ ys m
 
 maxY :: Map -> Double
-maxY m = maximum (Set.map y $ sites m)
+maxY m = maximum $ ys m
+
+xs :: Map -> Set.Set Double
+xs m = Set.map x $ sites m
+
+ys :: Map -> Set.Set Double
+ys m = Set.map y $ sites m
 
 padding :: Double
 padding = 10.0
