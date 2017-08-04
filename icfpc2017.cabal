@@ -18,6 +18,7 @@ library
   exposed-modules:     Lib
                      , Types
   build-depends:       base >= 4.7 && < 5
+                     , blaze-svg
                      , aeson
                      , bytestring
                      , containers
