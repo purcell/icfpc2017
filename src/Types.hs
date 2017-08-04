@@ -1,8 +1,10 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Types where
 
+import Control.Applicative ((<|>))
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Set (Set)
