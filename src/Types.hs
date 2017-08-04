@@ -18,21 +18,56 @@ data Site = Site
   { id :: SiteID
   , x :: Double
   , y :: Double
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
 data River = River
   { source :: SiteID
   , target :: SiteID
-  } deriving (Eq, Ord, Show, Generic) -- TODO: custom Eq, Ord
+  } deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON) -- TODO: custom Eq, Ord
 
 data Map = Map
   { sites :: Set Site
   , rivers :: Set River
   , mines :: Set SiteID
-  } deriving (Eq, Ord, Show, Generic)
+  } deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+
+data Claim = Claim
+  { punter :: PunterID
+  , river :: River
+  } deriving (Eq, Ord, Show)
 
 data Move
-  = Claim { punter :: PunterID
-          , river :: River }
-  | Pass { punter :: PunterID }
-  deriving (Eq, Show)
+  = ClaimMove Claim
+  | PassMove Pass
+  deriving (Show)
+
+data Pass =
+  Pass PunterID
+  deriving (Show)
+
+instance ToJSON Pass where
+  toJSON (Pass p) = object ["punter" .= p]
+
+instance FromJSON Pass where
+  parseJSON (Object o) = Pass <$> o .: "punter"
+  parseJSON invalid = typeMismatch "Pass" invalid
+
+instance ToJSON Claim where
+  toJSON (Claim p (River s t)) =
+    object ["punter" .= p, "source" .= s, "target" .= t]
+
+instance FromJSON Claim where
+  parseJSON (Object o) = do
+    s <- o .: "source"
+    t <- o .: "target"
+    Claim <$> o .: "punter" <*> pure (River s t)
+  parseJSON invalid = typeMismatch "Claim" invalid
+
+instance ToJSON Move where
+  toJSON (ClaimMove c) = object ["claim" .= toJSON c]
+  toJSON (PassMove p) = object ["pass" .= toJSON p]
+
+instance FromJSON Move where
+  parseJSON (Object o) =
+    (ClaimMove <$> (o .: "claim")) <|> (PassMove <$> o .: "pass")
+  parseJSON invalid = typeMismatch "NewOccurrence" invalid
