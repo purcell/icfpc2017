@@ -46,19 +46,8 @@ data Claim = Claim
 
 data Move
   = ClaimMove Claim
-  | PassMove Pass
+  | Pass PunterID
   deriving (Show)
-
-data Pass =
-  Pass PunterID
-  deriving (Show)
-
-instance ToJSON Pass where
-  toJSON (Pass p) = object ["punter" .= p]
-
-instance FromJSON Pass where
-  parseJSON (Object o) = Pass <$> o .: "punter"
-  parseJSON invalid = typeMismatch "Pass" invalid
 
 instance ToJSON Claim where
   toJSON (Claim p (River s t)) =
@@ -73,9 +62,10 @@ instance FromJSON Claim where
 
 instance ToJSON Move where
   toJSON (ClaimMove c) = object ["claim" .= toJSON c]
-  toJSON (PassMove p) = object ["pass" .= toJSON p]
+  toJSON (Pass p) = object ["pass" .= object ["punter" .= p]]
 
 instance FromJSON Move where
   parseJSON (Object o) =
-    (ClaimMove <$> (o .: "claim")) <|> (PassMove <$> o .: "pass")
+    (ClaimMove <$> (o .: "claim")) <|>
+    (o .: "pass" >>= (\o2 -> Pass <$> o2 .: "punter"))
   parseJSON invalid = typeMismatch "NewOccurrence" invalid
