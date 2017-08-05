@@ -1,4 +1,4 @@
 #!/bin/sh -e
 
 ssh -p 2222 punter@localhost "rm -rf p && git clone git@github.com:purcell/icfpc2017.git p && cd p && make dist"
-scp -p 2222 punter@localhost:p/icfp-e75ce0b1-020d-43e5-bd51-793ecd5f990b.tar.gz .
+scp -P 2222 punter@localhost:p/icfp-e75ce0b1-020d-43e5-bd51-793ecd5f990b.tar.gz .
