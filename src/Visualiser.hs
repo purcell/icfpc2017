@@ -32,13 +32,21 @@ siteToSvg mineIDs site =
   A.fill (colourForSite mineIDs site)
 
 riverToSvg :: [Claim] -> Set.Set Site -> River -> S.Svg
-riverToSvg claims allSites r =
-  S.line ! A.x1 (S.toValue (x $ endOfRiver source allSites r)) !
-  A.y1 (S.toValue (y $ endOfRiver source allSites r)) !
-  A.x2 (S.toValue (x $ endOfRiver target allSites r)) !
-  A.y2 (S.toValue (y $ endOfRiver target allSites r)) !
+riverToSvg claims sites' r =
+  S.line ! A.x1 (S.toValue (x $ endOfRiver source sites' r)) !
+  A.y1 (S.toValue (y $ endOfRiver source sites' r)) !
+  A.x2 (S.toValue (x $ endOfRiver target sites' r)) !
+  A.y2 (S.toValue (y $ endOfRiver target sites' r)) !
   A.strokeWidth (widthForRiver claims r) !
   A.stroke (colourForRiver claims r)
+
+endOfRiver :: (River -> SiteID) -> Set.Set Site -> River -> Site
+endOfRiver f sites' r =
+  if Set.null matchingSites
+    then error "somehow a river had an end that isn't in the sites!"
+    else Set.findMin matchingSites
+  where
+    matchingSites = Set.filter (\e -> Types.id e == f r) sites'
 
 widthForRiver :: [Claim] -> River -> S.AttributeValue
 widthForRiver claims r =
@@ -61,17 +69,6 @@ colourForPunter punterId =
     1 -> secondPunterColour
     2 -> thirdPunterColour
     _ -> fourthPunterColour
-
-endOfRiver :: (River -> SiteID) -> Set.Set Site -> River -> Site
-endOfRiver f allSites r =
-  if Set.null matchingSites
-    then error "somehow a river had an end that isn't in the sites!"
-    else Set.findMin matchingSites
-  where
-    matchingSites = Set.filter (\e -> Types.id e == f r) allSites
-
-targetOfRiver :: River -> Site
-targetOfRiver = undefined
 
 colourForSite :: Set.Set SiteID -> Site -> S.AttributeValue
 colourForSite mineIDs site =
