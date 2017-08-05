@@ -108,3 +108,6 @@ writeStateToFile :: GameState -> IO ()
 writeStateToFile state = do
   lookupDump <- lookupEnv "DUMP_STATE"
   when (isJust lookupDump) $ BL.writeFile "state.json" (encode state)
+
+writeStateToFileUnconditionally :: GameState -> IO ()
+writeStateToFileUnconditionally state = BL.writeFile "state.json" (encode state)
