@@ -18,6 +18,7 @@ library
   exposed-modules:     Lib
                      , Types
                      , Visualiser
+                     , Offline
   build-depends:       base >= 4.7 && < 5
                      , blaze-svg
                      , aeson
