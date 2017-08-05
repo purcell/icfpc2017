@@ -5,7 +5,7 @@ module GamePlay where
 
 import Data.Aeson
 import Data.Foldable (concatMap)
-import Data.List (sortBy)
+import Data.List (inits, sortBy)
 import Data.Maybe (listToMaybe)
 import Data.Ord (comparing)
 import Data.Semigroup ((<>))
@@ -26,20 +26,25 @@ data SetupState = SetupState
   } deriving (Generic, FromJSON, ToJSON)
 
 claims :: GameState -> Set Claim
-claims =
+claims = claimsInMoves . prevMoves
+
+claimsInMoves :: [Move] -> Set Claim
+claimsInMoves =
   S.fromList .
   concatMap
     (\m ->
        case m of
          ClaimMove c -> pure c
-         Pass _ -> mempty) .
-  prevMoves
+         Pass _ -> mempty)
+
+moveInits :: GameState -> [[Move]]
+moveInits gameState = inits $ prevMoves gameState
 
 precomputeGameState :: SetupState -> GameState
 precomputeGameState s = GameState s []
 
 updateState :: [Move] -> GameState -> GameState
-updateState moves s = s {prevMoves = (prevMoves s <> moves)}
+updateState moves s = s {prevMoves = prevMoves s <> moves}
 
 myPunterID :: GameState -> PunterID
 myPunterID s = GamePlay.punter (initialState s)
