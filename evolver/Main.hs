@@ -15,10 +15,10 @@ main = do
   let setup = SetupState 0 1 gameMap
   let gameState = precomputeGameState setup
   -- Iterate over some turns
-  let updatedState = iterateTurn $ iterateTurn $ iterateTurn $ iterateTurn gameState
+  let updatedState = iterate takeTurn gameState !! 10
   writeStateToFileUnconditionally updatedState
   visualiseFromDump
   return ()
 
-iterateTurn :: GameState -> GameState
-iterateTurn state = updateState [fst $ nextMove state] (snd $ nextMove state)
+takeTurn :: GameState -> GameState
+takeTurn state = updateState [fst $ nextMove state] (snd $ nextMove state)
