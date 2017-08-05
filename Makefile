@@ -11,6 +11,7 @@ $(DIST_ARCHIVE): dist/punter dist/src
 dist: clean $(DIST_ARCHIVE)
 
 dist/punter:
+	stack setup
 	stack build
 	stack install --local-bin-path dist
 	mv dist/icfpc2017 dist/punter
