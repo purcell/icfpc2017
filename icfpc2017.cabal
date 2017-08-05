@@ -19,6 +19,7 @@ library
                      , Types
                      , Visualiser
                      , Offline
+                     , GamePlay
   build-depends:       base >= 4.7 && < 5
                      , blaze-svg
                      , aeson
