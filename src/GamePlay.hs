@@ -1,10 +1,11 @@
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 
 module GamePlay where
 
 import Data.Aeson
-import Data.Foldable (concatMap)
+import Data.Foldable (concatMap, sum)
 import Data.List (inits, sortBy)
 import Data.Maybe (listToMaybe)
 import Data.Ord (comparing)
@@ -80,5 +81,14 @@ bestUnclaimedRiver s =
     mineSites = mines theMap
     riverScore :: River -> Int
     riverScore r =
-      (1 + 30 * S.size (S.filter (connectedTo r) mineSites)) *
-      (1 + 10 * S.size (S.filter (connectedTo r) mySites))
+      (1 + sum (connectedMineScore <$> connectedMineSites r)) *
+      (30 ^ endsTouchingMyRivers r)
+    endsTouchingMyRivers :: River -> Int
+    endsTouchingMyRivers r = S.size (S.filter (connectedTo r) mySites)
+    connectedMineSites :: River -> [SiteID]
+    connectedMineSites r = S.toList $ S.filter (connectedTo r) mineSites
+    connectedMineScore :: SiteID -> Int
+    connectedMineScore m =
+      if S.member m mySites
+        then 2
+        else 30
