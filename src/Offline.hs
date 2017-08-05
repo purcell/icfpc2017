@@ -13,7 +13,7 @@ import Data.Maybe (isJust)
 import GHC.Generics (Generic)
 import GamePlay
 import System.Environment (lookupEnv)
-import System.IO (hPutStrLn, stderr)
+import System.IO (hPrint, stderr)
 import Types
 
 data Hello = Hello
@@ -85,7 +85,7 @@ play myname reader writer = do
       let (move, state') = nextMove (updateState moves state)
       in do writeStateToFile state
             send $ Turn move state'
-    Stop moves scores -> hPutStrLn stderr (show scores)
+    Stop _moves scores -> hPrint stderr (show scores)
   where
     handshake = do
       send (Hello myname)
@@ -107,4 +107,4 @@ play myname reader writer = do
 writeStateToFile :: GameState -> IO ()
 writeStateToFile state = do
   lookupDump <- lookupEnv "DUMP_STATE"
-  when (isJust lookupDump) $ BL.writeFile "state.json" (encode state)
+  when (isJust lookupDump) $ BL.writeFile "dumps/state.json" (encode state)

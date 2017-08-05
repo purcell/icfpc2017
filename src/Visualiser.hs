@@ -2,8 +2,6 @@
 
 module Visualiser where
 
-import Data.Aeson as Aeson
-import qualified Data.ByteString.Lazy as BSL
 import Data.Foldable (find)
 import Data.List as List
 import Data.Monoid ((<>))
@@ -15,13 +13,14 @@ import qualified Text.Blaze.Svg11 as S
 import qualified Text.Blaze.Svg11.Attributes as A
 import Types
 
-writeStateToFile :: GameState -> IO ()
-writeStateToFile gameState = do
+writeStateToSvgFiles :: GameState -> IO Int
+writeStateToSvgFiles gameState = do
   let svgs =
         List.map
           (renderMovesOnMap (GamePlay.map $ initialState gameState))
           (moveInits gameState)
   mapM_ writeSvgToFile svgs
+  return $ length svgs
 
 renderMovesOnMap :: Map -> [Move] -> (Int, String)
 renderMovesOnMap map' moves =
@@ -221,12 +220,5 @@ sampleGameState =
   , prevMoves = sampleMoves
   }
 
-testRender :: IO ()
-testRender = writeStateToFile sampleGameState
-
-visualiseFromDump :: IO ()
-visualiseFromDump = do
-  contents <- BSL.readFile "state.json"
-  case Aeson.eitherDecode contents of
-    (Right state) -> writeStateToFile state
-    (Left err) -> error $ "Error decoding state: " <> err
+testRender :: IO Int
+testRender = writeStateToSvgFiles sampleGameState
