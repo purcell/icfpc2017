@@ -3,6 +3,8 @@
 MYDIR=$(dirname "$0")
 PORT="$1"
 
+cd "$MYDIR"
+
 if [ -z "$PORT" ]; then
     echo "usage: $0 PORT" 1>&2
     echo "Choose port from list at http://punter.inf.ed.ac.uk/status.html" 1>&2
@@ -13,4 +15,4 @@ lamduct \
       --game-port "$PORT" \
       --client-instance-logfile "$MYDIR/logs/punt.log" \
       --log-level 3 \
-      "$MYDIR/punter"
+      "./punter"
