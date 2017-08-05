@@ -27,7 +27,7 @@ data Ready =
         GameState
 
 instance ToJSON Ready where
-  toJSON (Ready p s) = object ["punter" .= p, "state" .= s]
+  toJSON (Ready p s) = object ["ready" .= p, "state" .= s]
 
 data GameState = GameState
   { initialState :: SetupState
