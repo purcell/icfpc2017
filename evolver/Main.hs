@@ -21,4 +21,5 @@ main = do
   return ()
 
 takeTurn :: GameState -> GameState
-takeTurn state = updateState [fst $ nextMove state] (snd $ nextMove state)
+takeTurn state = updateState [move] state'
+  where (move, state') = nextMove state
