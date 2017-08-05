@@ -224,9 +224,9 @@ sampleGameState =
 testRender :: IO ()
 testRender = writeStateToFile sampleGameState
 
-visualiseForTimothy :: IO ()
-visualiseForTimothy = do
-  contents <- BSL.readFile "examples/timothys_sample.json"
+visualiseFromDump :: IO ()
+visualiseFromDump = do
+  contents <- BSL.readFile "state.json"
   case Aeson.eitherDecode contents of
     (Right state) -> writeStateToFile state
-    (Left err) -> error $ "Sorry, Timothy! " <> err
+    (Left err) -> error $ "Error decoding state: " <> err

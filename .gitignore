@@ -4,3 +4,4 @@ visualiser-output.svg
 /dist/punter
 /dist/src
 /visualisations
+.DS_Store

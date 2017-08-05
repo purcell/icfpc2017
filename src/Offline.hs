@@ -5,12 +5,14 @@
 module Offline where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard)
+import Control.Monad (guard, when)
 import Data.Aeson
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as HM
+import Data.Maybe (isJust)
 import GHC.Generics (Generic)
 import GamePlay
+import System.Environment (lookupEnv)
 import System.IO (hPutStrLn, stderr)
 import Types
 
@@ -81,18 +83,28 @@ play myname reader writer = do
       in send (Ready (myPunterID state') state')
     Play moves state ->
       let (move, state') = nextMove (updateState moves state)
-      in send $ Turn move state'
+      in do writeStateToFile state
+            send $ Turn move state'
     Stop moves scores -> hPutStrLn stderr (show scores)
   where
     handshake = do
       send (Hello myname)
       (HelloBack name) <- recv
       guard $ name == myname
-    send :: ToJSON a => a -> IO ()
+    send
+      :: ToJSON a
+      => a -> IO ()
     send o = writer (encode o)
-    recv :: FromJSON a => IO a
+    recv
+      :: FromJSON a
+      => IO a
     recv = do
       input <- reader
       case eitherDecode input of
         Right o -> pure o
         Left e -> fail e
+
+writeStateToFile :: GameState -> IO ()
+writeStateToFile state = do
+  lookupDump <- lookupEnv "DUMP_STATE"
+  when (isJust lookupDump) $ BL.writeFile "state.json" (encode state)
