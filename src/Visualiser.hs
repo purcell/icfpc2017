@@ -3,6 +3,7 @@
 module Visualiser where
 
 import Data.Foldable (find)
+import Data.List as List
 import Data.Monoid ((<>))
 import qualified Data.Set as Set
 import GamePlay
@@ -12,16 +13,23 @@ import qualified Text.Blaze.Svg11 as S
 import qualified Text.Blaze.Svg11.Attributes as A
 import Types
 
-testRender :: IO ()
-testRender = do
-  let svgStr = renderGameState sampleGameState
-  writeFile "visualiser-output.svg" svgStr
+writeStateToFile :: GameState -> IO ()
+writeStateToFile gameState = do
+  let svgs =
+        List.map
+          (renderMovesOnMap (GamePlay.map $ initialState gameState))
+          (moveInits gameState)
+  mapM_ writeSvgToFile svgs
 
-renderGameState :: GameState -> String
-renderGameState gameState =
-  let map' = GamePlay.map $ initialState gameState
-      claims' = GamePlay.claims gameState
-  in renderSvg $ mapToSvg map' claims'
+renderMovesOnMap :: Map -> [Move] -> (Int, String)
+renderMovesOnMap map' moves =
+  let claims' = GamePlay.claimsInMoves moves
+      svgStr = renderSvg $ mapToSvg map' claims'
+  in (length moves, svgStr)
+
+writeSvgToFile :: (Int, String) -> IO ()
+writeSvgToFile (moveCount, svg) =
+  writeFile ("visualisations/move-" <> show moveCount <> ".svg") svg
 
 mapToSvg :: Map -> Set.Set Claim -> S.Svg
 mapToSvg m claims' =
@@ -210,3 +218,6 @@ sampleGameState =
       SetupState {GamePlay.punter = 0, punters = 2, GamePlay.map = sampleMap}
   , prevMoves = sampleMoves
   }
+
+testRender :: IO ()
+testRender = writeStateToFile sampleGameState
