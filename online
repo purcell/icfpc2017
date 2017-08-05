@@ -14,5 +14,5 @@ fi
 lamduct \
       --game-port "$PORT" \
       --client-instance-logfile "$MYDIR/logs/punt.log" \
-      --log-level 1 \
+      --log-level 3 \
       "./punter"
