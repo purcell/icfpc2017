@@ -15,6 +15,9 @@ render = do
   let a = renderSvg $ mapToSvg sampleMap
   writeFile "visualiser-output.svg" a
 
+mapToStr :: Map -> String
+mapToStr m = renderSvg $ mapToSvg m
+
 mapToSvg :: Map -> S.Svg
 mapToSvg m =
   S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" !
