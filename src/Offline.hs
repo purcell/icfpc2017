@@ -37,6 +37,7 @@ data Action
          GameState
   | Stop [Move]
          [Score]
+         GameState
 
 data Score =
   Score PunterID
@@ -54,10 +55,11 @@ instance FromJSON Action where
       (\o ->
          (Setup <$> parseJSON (Object o)) <|>
          (Play <$> (o .: "move" >>= parseMoves) <*> o .: "state") <|>
-         ((o .: "stop") >>=
-          withObject
-            "stop"
-            (\o2 -> Stop <$> (o2 .: "moves") <*> (o2 .: "scores"))))
+         (((o .: "stop") >>=
+           withObject
+             "stop"
+             (\o2 -> Stop <$> (o2 .: "moves") <*> (o2 .: "scores"))) <*>
+          o .: "state"))
     where
       parseMoves = withObject "moves" (.: "moves")
 
@@ -83,21 +85,19 @@ play myname reader writer = do
       in send (Ready (myPunterID state') state')
     Play moves state ->
       let (move, state') = nextMove (updateState moves state)
-      in do writeStateToFile state
-            send $ Turn move state'
-    Stop _moves scores -> hPrint stderr (show scores)
+      in send $ Turn move state'
+    Stop _moves scores state -> do
+      hPrint stderr scores
+      let finalState = updateState _moves state
+      writeStateToFile finalState
   where
     handshake = do
       send (Hello myname)
       (HelloBack name) <- recv
       guard $ name == myname
-    send
-      :: ToJSON a
-      => a -> IO ()
+    send :: ToJSON a => a -> IO ()
     send o = writer (encode o)
-    recv
-      :: FromJSON a
-      => IO a
+    recv :: FromJSON a => IO a
     recv = do
       input <- reader
       case eitherDecode input of
