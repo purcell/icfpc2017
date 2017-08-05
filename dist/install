@@ -1,0 +1,3 @@
+#!/bin/sh -e
+
+echo "Nothing to see here"
