@@ -8,8 +8,11 @@ import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Aeson
 import qualified Data.ByteString.Lazy as BL
+import Data.Foldable (asum)
 import qualified Data.HashMap.Strict as HM
 import Data.Semigroup ((<>))
+import Data.Set (Set)
+import qualified Data.Set as S
 import GHC.Generics (Generic)
 import System.IO (hPutStrLn, stderr)
 import Types
@@ -73,6 +76,16 @@ precomputeGameState s = GameState s []
 
 updateState :: [Move] -> GameState -> GameState
 updateState moves s = s {prevMoves = (prevMoves s <> moves)}
+
+claims :: GameState -> Set Claim
+claims =
+  S.fromList .
+  concatMap
+    (\m ->
+       case m of
+         ClaimMove c -> pure c
+         Pass _ -> mempty) .
+  prevMoves
 
 nextMove :: GameState -> (Move, GameState)
 nextMove s = (Pass (myPunterID s), s)
