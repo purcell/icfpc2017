@@ -2,9 +2,10 @@
 
 module Visualiser where
 
-import Data.Maybe (listToMaybe)
+import Data.Foldable (find)
 import Data.Monoid ((<>))
 import qualified Data.Set as Set
+import GamePlay
 import Text.Blaze.Svg.Renderer.String (renderSvg)
 import Text.Blaze.Svg11 ((!))
 import qualified Text.Blaze.Svg11 as S
@@ -13,17 +14,20 @@ import Types
 
 testRender :: IO ()
 testRender = do
-  let svgStr = renderStateToString sampleMap sampleClaims
+  let svgStr = renderGameState sampleGameState
   writeFile "visualiser-output.svg" svgStr
 
-renderStateToString :: Map -> [Claim] -> String
-renderStateToString m claims = renderSvg $ mapToSvg m claims
+renderGameState :: GameState -> String
+renderGameState gameState =
+  let map' = GamePlay.map $ initialState gameState
+      claims' = GamePlay.claims gameState
+  in renderSvg $ mapToSvg map' claims'
 
-mapToSvg :: Map -> [Claim] -> S.Svg
-mapToSvg m claims =
+mapToSvg :: Map -> Set.Set Claim -> S.Svg
+mapToSvg m claims' =
   S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" !
   A.viewbox (viewboxAttrs m) $ do
-    mapM_ (riverToSvg claims $ sites m) $ rivers m
+    mapM_ (riverToSvg claims' $ sites m) $ rivers m
     mapM_ (siteToSvg $ mines m) $ sites m
 
 siteToSvg :: Set.Set SiteID -> Site -> S.Svg
@@ -31,14 +35,16 @@ siteToSvg mineIDs site =
   S.circle ! A.cx (S.toValue $ x site) ! A.cy (S.toValue $ y site) ! A.r "0.1" !
   A.fill (colourForSite mineIDs site)
 
-riverToSvg :: [Claim] -> Set.Set Site -> River -> S.Svg
-riverToSvg claims sites' r =
+riverToSvg :: Set.Set Claim -> Set.Set Site -> River -> S.Svg
+riverToSvg claims' sites' r =
   S.line ! A.x1 (S.toValue (x $ endOfRiver source sites' r)) !
   A.y1 (S.toValue (y $ endOfRiver source sites' r)) !
   A.x2 (S.toValue (x $ endOfRiver target sites' r)) !
   A.y2 (S.toValue (y $ endOfRiver target sites' r)) !
-  A.strokeWidth (widthForRiver claims r) !
-  A.stroke (colourForRiver claims r)
+  A.strokeWidth (widthForRiver riverClaimed) !
+  A.stroke (colourForRiver riverClaimed claims' r)
+  where
+    riverClaimed = Set.member r $ Set.map river claims'
 
 endOfRiver :: (River -> SiteID) -> Set.Set Site -> River -> Site
 endOfRiver f sites' r =
@@ -48,19 +54,21 @@ endOfRiver f sites' r =
   where
     matchingSites = Set.filter (\e -> Types.id e == f r) sites'
 
-widthForRiver :: [Claim] -> River -> S.AttributeValue
-widthForRiver claims r =
-  if r `elem` map river claims
+widthForRiver :: Bool -> S.AttributeValue
+widthForRiver riverClaimed =
+  if riverClaimed
     then claimedRiverWidth
     else unclaimedRiverWidth
 
-colourForRiver :: [Claim] -> River -> S.AttributeValue
-colourForRiver claims r =
-  case maybeClaim of
-    Nothing -> unclaimedRiverColour
-    (Just claim) -> colourForPunter $ punter claim
+colourForRiver :: Bool -> Set.Set Claim -> River -> S.AttributeValue
+colourForRiver riverClaimed claims' r =
+  if riverClaimed
+    then case maybePunter of
+           Nothing -> unclaimedRiverColour
+           (Just p) -> colourForPunter p
+    else unclaimedRiverColour
   where
-    maybeClaim = listToMaybe $ filter (\claim -> river claim == r) claims
+    maybePunter = Types.punter <$> find (\claim -> river claim == r) claims'
 
 colourForPunter :: PunterID -> S.AttributeValue
 colourForPunter punterId =
@@ -179,17 +187,26 @@ sampleMap =
   , mines = Set.fromList [1, 5]
   }
 
-sampleClaims :: [Claim]
-sampleClaims =
-  [ Claim {punter = 0, river = River {source = 7, target = 5}}
-  , Claim {punter = 0, river = River {source = 3, target = 2}}
-  , Claim {punter = 1, river = River {source = 1, target = 2}}
-  , Claim {punter = 0, river = River {source = 5, target = 3}}
-  , Claim {punter = 1, river = River {source = 1, target = 3}}
-  , Claim {punter = 0, river = River {source = 0, target = 7}}
-  , Claim {punter = 1, river = River {source = 1, target = 7}}
-  , Claim {punter = 0, river = River {source = 4, target = 3}}
-  , Claim {punter = 1, river = River {source = 0, target = 1}}
-  , Claim {punter = 0, river = River {source = 5, target = 4}}
-  , Claim {punter = 1, river = River {source = 7, target = 6}}
+sampleMoves :: [Move]
+sampleMoves =
+  [ ClaimMove Claim {Types.punter = 0, river = River {source = 7, target = 5}}
+  , Pass 1
+  , ClaimMove Claim {Types.punter = 0, river = River {source = 3, target = 2}}
+  , ClaimMove Claim {Types.punter = 1, river = River {source = 1, target = 2}}
+  , ClaimMove Claim {Types.punter = 0, river = River {source = 5, target = 3}}
+  , ClaimMove Claim {Types.punter = 1, river = River {source = 1, target = 3}}
+  , ClaimMove Claim {Types.punter = 0, river = River {source = 0, target = 7}}
+  , ClaimMove Claim {Types.punter = 1, river = River {source = 1, target = 7}}
+  , ClaimMove Claim {Types.punter = 0, river = River {source = 4, target = 3}}
+  , ClaimMove Claim {Types.punter = 1, river = River {source = 0, target = 1}}
+  , ClaimMove Claim {Types.punter = 0, river = River {source = 5, target = 4}}
+  , ClaimMove Claim {Types.punter = 1, river = River {source = 7, target = 6}}
   ]
+
+sampleGameState :: GameState
+sampleGameState =
+  GameState
+  { initialState =
+      SetupState {GamePlay.punter = 0, punters = 2, GamePlay.map = sampleMap}
+  , prevMoves = sampleMoves
+  }
