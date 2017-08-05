@@ -2,6 +2,8 @@
 
 module Visualiser where
 
+import Data.Aeson as Aeson
+import qualified Data.ByteString.Lazy as BSL
 import Data.Foldable (find)
 import Data.List as List
 import Data.Monoid ((<>))
@@ -221,3 +223,10 @@ sampleGameState =
 
 testRender :: IO ()
 testRender = writeStateToFile sampleGameState
+
+visualiseForTimothy :: IO ()
+visualiseForTimothy = do
+  contents <- BSL.readFile "examples/timothys_sample.json"
+  case Aeson.eitherDecode contents of
+    (Right state) -> writeStateToFile state
+    (Left err) -> error $ "Sorry, Timothy! " <> err
