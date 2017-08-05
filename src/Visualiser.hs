@@ -84,10 +84,19 @@ siteColour = "#B8BDB5"
 
 viewboxAttrs :: Map -> S.AttributeValue
 viewboxAttrs m =
-  S.toValue (minX m - padding) <> " " <> S.toValue (minY m - padding) <> " " <>
-  S.toValue (width m + (padding * 2)) <>
-  " " <>
-  S.toValue (height m + (padding * 2))
+  viewboxX m <> " " <> viewboxY m <> " " <> viewboxW m <> " " <> viewboxH m
+
+viewboxX :: Map -> S.AttributeValue
+viewboxX m = S.toValue $ minX m - padding
+
+viewboxY :: Map -> S.AttributeValue
+viewboxY m = S.toValue $ minY m - padding
+
+viewboxW :: Map -> S.AttributeValue
+viewboxW m = S.toValue $ width m + (padding * 2)
+
+viewboxH :: Map -> S.AttributeValue
+viewboxH m = S.toValue $ height m + (padding * 2)
 
 width :: Map -> Double
 width m = maxX m - minX m
