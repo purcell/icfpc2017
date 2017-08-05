@@ -35,7 +35,6 @@ data Action
          GameState
   | Stop [Move]
          [Score]
-         GameState
 
 data Score =
   Score PunterID
@@ -53,7 +52,10 @@ instance FromJSON Action where
       (\o ->
          (Setup <$> parseJSON (Object o)) <|>
          (Play <$> (o .: "move" >>= parseMoves) <*> o .: "state") <|>
-         (Stop <$> (o .: "moves") <*> (o .: "scores") <*> o .: "state"))
+         ((o .: "stop") >>=
+          withObject
+            "stop"
+            (\o2 -> Stop <$> (o2 .: "moves") <*> (o2 .: "scores"))))
     where
       parseMoves = withObject "moves" (.: "moves")
 
@@ -80,10 +82,7 @@ play myname reader writer = do
     Play moves state ->
       let (move, state') = nextMove (updateState moves state)
       in send $ Turn move state'
-    Stop moves scores state -> do
-      hPutStrLn stderr (show scores)
-      let state' = updateState moves state
-      return ()
+    Stop moves scores -> hPutStrLn stderr (show scores)
   where
     handshake = do
       send (Hello myname)
