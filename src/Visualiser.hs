@@ -15,17 +15,16 @@ import Types
 
 writeStateToSvgFiles :: GameState -> IO Int
 writeStateToSvgFiles gameState = do
-  let svgs = renderStateToSvgStrings gameState
-  mapM_ writeSvgToFile svgs
+  let svgs = renderMovesFromState gameState
+  mapM_ writeMoveSvgToFile svgs
   return $ length svgs
 
-writeSvgToFile :: (Int, String) -> IO ()
-writeSvgToFile (moveCount, svg) =
+writeMoveSvgToFile :: (Int, String) -> IO ()
+writeMoveSvgToFile (moveCount, svg) =
   writeFile ("visualisations/move-" <> show moveCount <> ".svg") svg
 
-renderStateToSvgStrings :: GameState -> [(Int, String)]
-renderStateToSvgStrings state =
-  List.map (renderMovesOnMap state) (moveInits state)
+renderMovesFromState :: GameState -> [(Int, String)]
+renderMovesFromState state = List.map (renderMovesOnMap state) (moveInits state)
 
 renderMovesOnMap :: GameState -> [Move] -> (Int, String)
 renderMovesOnMap state moves =
@@ -37,7 +36,7 @@ mapToSvg :: GameState -> Set.Set Claim -> S.Svg
 mapToSvg state claims' =
   S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" !
   A.viewbox viewboxAttrs $ do
-    punterLegendToSvg state
+    renderLegendFromState w y' state
     mapM_ (riverToSvg w claims' sites') rivers'
     mapM_ (siteToSvg w mines') sites'
   where
@@ -51,31 +50,21 @@ mapToSvg state claims' =
     h = viewboxH map'
     viewboxAttrs = foldr (\d m -> S.toValue d <> " " <> m) "" [x', y', w, h]
 
-punterLegendToSvg :: GameState -> S.Svg
-punterLegendToSvg state =
-  mapM_ (punterToSvg $ myPunterID state) $ puntersInGame state
+renderLegendFromState :: Double -> Double -> GameState -> S.Svg
+renderLegendFromState viewboxWidth minY' state =
+  mapM_ (punterToSvg viewboxWidth minY' $ myPunterID state) $
+  puntersInGame state
 
-punterToSvg :: PunterID -> PunterID -> S.Svg
-punterToSvg ourPunter punterToRender = do
-  colouredRectForPunter punterToRender
-  textForPunter ourPunter punterToRender
-
-colouredRectForPunter :: PunterID -> S.Svg
-colouredRectForPunter p =
-  S.rect ! colour ! rectX ! rectY ! rectWidth ! rectHeight
+punterToSvg :: Double -> Double -> PunterID -> PunterID -> S.Svg
+punterToSvg viewboxWidth minY' ourPunter p =
+  S.text_ (S.toSvg punterDescription) ! fontSize ! fontColour ! textAnchor !
+  translation
   where
-    colour = A.fill (colourForPunter p)
-    rectWidth = A.width "0.2"
-    rectHeight = A.height "0.2"
-    rectX = A.x "-3.0"
-    rectY = A.y $ S.toValue (show (-3.2 - punterYOffset p))
-
-textForPunter :: PunterID -> PunterID -> S.Svg
-textForPunter ourPunter p =
-  S.text_ (S.toSvg punterDescription) ! textX ! textY ! A.fontSize "0.15"
-  where
-    textX = A.x "-3.4"
-    textY = A.y $ S.toValue (show (-3.05 - punterYOffset p))
+    fontSize = A.fontSize $ S.toValue (viewboxWidth * 0.05)
+    fontColour = A.fill (colourForPunter p)
+    textAnchor = A.textAnchor "start"
+    translation = A.transform $ S.toValue $ "translate(0 " <> yTrans <> ")"
+    yTrans = show (minY' + (fromIntegral p / viewboxWidth))
     punterDescription =
       if p == ourPunter
         then show p <> " (us)"
