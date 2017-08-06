@@ -21,6 +21,7 @@ import Types
 data GameState = GameState
   { initialState :: SetupState
   , prevMoves :: [Move]
+  , shortestMinePaths :: [Set River]
   } deriving (Generic, FromJSON, ToJSON)
 
 data SetupState = SetupState
@@ -45,7 +46,13 @@ moveInits :: GameState -> [[Move]]
 moveInits gameState = List.inits $ prevMoves gameState
 
 precomputeGameState :: SetupState -> GameState
-precomputeGameState s = GameState s []
+precomputeGameState s = GameState s [] minePaths
+  where
+    ms = S.toList $ mines (GamePlay.map s)
+    g = graph (GamePlay.map s)
+    minePaths =
+      [pathToRivers (BFS.esp m m2 g) | (m:rest) <- List.tails ms, m2 <- rest]
+    pathToRivers nodes = S.fromList $ zipWith River nodes (tail nodes)
 
 updateState :: [Move] -> GameState -> GameState
 updateState moves s = s {prevMoves = prevMoves s <> moves}

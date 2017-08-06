@@ -25,12 +25,11 @@ main = do
       let strategies =
             cycle
               [ Strategy defaultWeights nextMove
-              , Strategy (defaultWeights {wConnectedMineAgain = 30}) nextMove
+              , Strategy (defaultWeights {wOnShortestMinePath = 0}) nextMove
               ]
       let finalPlayers = simulate gameMap (take (read numPlayers) strategies)
           player = last finalPlayers
           finalState = playerState player
-      dumpState dumpFile finalState
       let playersWithScores = (zip finalPlayers (playerScore <$> finalPlayers))
       forM_ (sortBy (comparing snd) playersWithScores) $ \(p, sc) ->
         hPutStrLn stderr $
@@ -38,4 +37,5 @@ main = do
         show (strategyParams (playerStrategy p)) <>
         ", score " <>
         show sc
+      dumpState dumpFile finalState
     _ -> die "usage: evolver MAPFILE DUMPFILE NUMPLAYERS"

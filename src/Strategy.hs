@@ -12,10 +12,11 @@ data Weights = Weights
   { wConnectedMineAgain :: Int
   , wConnectedNewMine :: Int
   , wEndTouchingMyRiver :: Int
+  , wOnShortestMinePath :: Int
   } deriving (Show)
 
 defaultWeights :: Weights
-defaultWeights = Weights 2 30 30
+defaultWeights = Weights 2 30 30 10
 
 nextMove :: Weights -> GameState -> (Move, GameState)
 nextMove ws s = (ClaimMove bestClaim, s)
@@ -46,9 +47,15 @@ bestUnclaimedRiver w s =
     riverScore :: River -> Int
     riverScore r =
       (1 + sum (connectedMineScore <$> connectedMineSites r)) *
-      (wEndTouchingMyRiver w ^ endsTouchingMyRivers r)
+      (wEndTouchingMyRiver w ^ endsTouchingMyRivers r) *
+      (1 +
+       (wOnShortestMinePath w * shortestMinePathCount r) `div`
+       numPathsBetweenMines)
     endsTouchingMyRivers :: River -> Int
     endsTouchingMyRivers r = S.size (S.filter (connectedTo r) mySites)
+    numPathsBetweenMines = length $ shortestMinePaths s
+    shortestMinePathCount :: River -> Int
+    shortestMinePathCount r = sum [1 | p <- shortestMinePaths s, r `S.member` p]
     connectedMineSites :: River -> [SiteID]
     connectedMineSites r = S.toList $ S.filter (connectedTo r) mineSites
     connectedMineScore :: SiteID -> Int
