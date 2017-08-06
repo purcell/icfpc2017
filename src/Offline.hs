@@ -5,15 +5,15 @@
 module Offline where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard, when)
+import Control.Monad (guard)
 import Data.Aeson
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as HM
-import Data.Maybe (isJust)
+import Data.Semigroup ((<>))
 import GHC.Generics (Generic)
 import GamePlay
 import System.Environment (lookupEnv)
-import System.IO (hPrint, stderr)
+import System.IO (hPrint, hPutStrLn, stderr)
 import Types
 
 data Hello = Hello
@@ -106,5 +106,9 @@ play myname reader writer = do
 
 writeStateToFile :: GameState -> IO ()
 writeStateToFile state = do
-  lookupDump <- lookupEnv "DUMP_STATE"
-  when (isJust lookupDump) $ BL.writeFile "dumps/state.json" (encode state)
+  dump <- lookupEnv "DUMP_STATE"
+  case dump of
+    Just dumpFile -> do
+      hPutStrLn stderr $ "Dumping state to " <> dumpFile
+      BL.writeFile dumpFile (encode state)
+    _ -> pure ()
