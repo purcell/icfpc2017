@@ -55,6 +55,11 @@ nextMove s = (ClaimMove bestClaim, s)
   where
     bestClaim = Claim (myPunterID s) (bestUnclaimedRiver s)
 
+moveAndUpdate :: GameState -> GameState
+moveAndUpdate state = updateState [move] state'
+  where
+    (move, state') = nextMove state
+
 connectedTo :: River -> SiteID -> Bool
 connectedTo (River s t) site = s == site || t == site
 

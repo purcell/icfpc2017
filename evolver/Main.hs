@@ -2,24 +2,24 @@
 
 module Main where
 
-import Lib (readMap)
 import GamePlay
-import Offline (writeStateToFileUnconditionally)
-import Visualiser (visualiseFromDump)
+import Lib (readMap)
+import Offline (dumpState)
+import System.Environment (getArgs)
 
 main :: IO ()
 main = do
-  -- Read a map in
-  Right gameMap <- readMap "./examples/circle.json"
-  -- Generate our initial state for the game
-  let setup = SetupState 0 1 gameMap
-  let gameState = precomputeGameState setup
-  -- Iterate over some turns
-  let updatedState = iterate takeTurn gameState !! 10
-  writeStateToFileUnconditionally updatedState
-  visualiseFromDump
-  return ()
-
-takeTurn :: GameState -> GameState
-takeTurn state = updateState [move] state'
-  where (move, state') = nextMove state
+  args <- getArgs
+  case args of
+    [mapFile, dumpFile]
+       -- Read a map in
+     -> do
+      Right gameMap <- readMap mapFile
+       -- Generate our initial state for the game
+      let setup = SetupState 0 1 gameMap
+      let gameState = precomputeGameState setup
+       -- Iterate over some turns
+      let updatedState = iterate moveAndUpdate gameState !! 10
+      dumpState dumpFile updatedState
+      return ()
+    _ -> error "usage: evolver MAPFILE DUMPFILE"
