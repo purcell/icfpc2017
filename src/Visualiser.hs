@@ -38,18 +38,18 @@ mapToSvg state claims' =
   S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" !
   A.viewbox viewboxAttrs $ do
     punterLegendToSvg state
-    mapM_ (riverToSvg claims' sites') rivers'
+    mapM_ (riverToSvg w claims' sites') rivers'
     mapM_ (siteToSvg w mines') sites'
   where
     map' = GamePlay.map $ initialState state
     sites' = sites map'
     mines' = mines map'
     rivers' = rivers map'
-    x = viewboxX map'
-    y = viewboxY map'
+    x' = viewboxX map'
+    y' = viewboxY map'
     w = viewboxW map'
     h = viewboxH map'
-    viewboxAttrs = foldr (\d m -> S.toValue d <> " " <> m) "" [x, y, w, h]
+    viewboxAttrs = foldr (\d m -> S.toValue d <> " " <> m) "" [x', y', w, h]
 
 punterLegendToSvg :: GameState -> S.Svg
 punterLegendToSvg state =
@@ -102,13 +102,13 @@ siteToSvg viewboxWidth mineIDs site = S.circle ! cx ! cy ! r ! colour
     r = A.r $ S.toValue (viewboxWidth * 0.01)
     colour = A.fill (colourForSite mineIDs site)
 
-riverToSvg :: Set.Set Claim -> Set.Set Site -> River -> S.Svg
-riverToSvg claims' sites' r =
+riverToSvg :: Double -> Set.Set Claim -> Set.Set Site -> River -> S.Svg
+riverToSvg viewboxWidth claims' sites' r =
   S.line ! A.x1 (S.toValue (x $ endOfRiver source sites' r)) !
   A.y1 (S.toValue (y $ endOfRiver source sites' r)) !
   A.x2 (S.toValue (x $ endOfRiver target sites' r)) !
   A.y2 (S.toValue (y $ endOfRiver target sites' r)) !
-  A.strokeWidth (widthForRiver riverClaimed) !
+  A.strokeWidth (widthForRiver viewboxWidth riverClaimed) !
   A.stroke (colourForRiver riverClaimed claims' r)
   where
     riverClaimed = Set.member r $ Set.map river claims'
@@ -121,11 +121,14 @@ endOfRiver f sites' r =
   where
     matchingSites = Set.filter (\e -> Types.id e == f r) sites'
 
-widthForRiver :: Bool -> S.AttributeValue
-widthForRiver riverClaimed =
-  if riverClaimed
-    then claimedRiverWidth
-    else unclaimedRiverWidth
+widthForRiver :: Double -> Bool -> S.AttributeValue
+widthForRiver viewboxWidth riverClaimed =
+  S.toValue $ baseWidth * (viewboxWidth * 0.1)
+  where
+    baseWidth =
+      if riverClaimed
+        then 0.05
+        else 0.03
 
 colourForRiver :: Bool -> Set.Set Claim -> River -> S.AttributeValue
 colourForRiver riverClaimed claims' r =
@@ -187,12 +190,6 @@ ys m = Set.map y $ sites m
 
 padding :: Double
 padding = 0.2
-
-unclaimedRiverWidth :: S.AttributeValue
-unclaimedRiverWidth = "0.03"
-
-claimedRiverWidth :: S.AttributeValue
-claimedRiverWidth = "0.04"
 
 unclaimedRiverColour :: S.AttributeValue
 unclaimedRiverColour = "#E2E4F6"
