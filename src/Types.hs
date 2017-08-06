@@ -64,6 +64,8 @@ data Claim = Claim
 data Move
   = ClaimMove Claim
   | Pass PunterID
+  | Splurge PunterID
+            [SiteID]
   deriving (Show)
 
 instance ToJSON Claim where
@@ -80,9 +82,12 @@ instance FromJSON Claim where
 instance ToJSON Move where
   toJSON (ClaimMove c) = object ["claim" .= toJSON c]
   toJSON (Pass p) = object ["pass" .= object ["punter" .= p]]
+  toJSON (Splurge p route) =
+    object ["splurge" .= object ["punter" .= p, "route" .= route]]
 
 instance FromJSON Move where
   parseJSON (Object o) =
     (ClaimMove <$> (o .: "claim")) <|>
-    (o .: "pass" >>= (\o2 -> Pass <$> o2 .: "punter"))
+    (o .: "pass" >>= (\o2 -> Pass <$> o2 .: "punter")) <|>
+    (o .: "splurge" >>= (\o2 -> Splurge <$> o2 .: "punter" <*> o2 .: "route"))
   parseJSON invalid = typeMismatch "NewOccurrence" invalid
