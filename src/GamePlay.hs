@@ -115,7 +115,7 @@ bestUnclaimedRiver s =
       S.fromList $
       concatMap
         (\c ->
-           if (myPunterID s == Types.punter c)
+           if myPunterID s == Types.punter c
              then [source (river c), target (river c)]
              else [])
         (S.toList (claims s))
