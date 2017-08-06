@@ -62,10 +62,28 @@ nextMove s = (ClaimMove bestClaim, s)
   where
     bestClaim = Claim (myPunterID s) (bestUnclaimedRiver s)
 
-moveAndUpdate :: GameState -> GameState
-moveAndUpdate state = updateState [move] state'
-  where
-    (move, state') = nextMove state
+type Strategy = GameState -> (Move, GameState)
+
+data Player = Player
+  { playerStrategy :: Strategy
+  , playerState :: GameState
+  }
+
+simulate :: Map -> [Strategy] -> [Player]
+simulate theMap strategies =
+  let numPlayers = length strategies
+      players = uncurry makePlayer <$> zip strategies [1 ..]
+      makePlayer s n =
+        Player s (precomputeGameState (SetupState n numPlayers theMap))
+      numTurns = S.size (rivers theMap)
+      playRound :: [Player] -> [Player]
+      playRound (cur:others) =
+        let (move, newPS) = playerStrategy cur (playerState cur)
+            newCur = cur {playerState = newPS}
+        in (\p -> p {playerState = updateState [move] (playerState p)}) <$>
+           (others ++ [newCur])
+      playRound [] = []
+  in iterate playRound players !! numTurns
 
 connectedTo :: River -> SiteID -> Bool
 connectedTo (River s t) site = s == site || t == site
