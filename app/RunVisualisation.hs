@@ -6,6 +6,7 @@ import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy as BSL (readFile)
 import Data.Semigroup ((<>))
 import System.Environment (getArgs)
+import System.Exit
 import Visualiser (writeStateToSvgFiles)
 
 main :: IO ()
@@ -23,4 +24,4 @@ main = do
         (Left err) ->
           error $
           "Couldn't write svg files, error decoding dumped state: " <> err
-    _ -> error "usage: prog dump-file-name"
+    _ -> die "usage: prog dump-file-name"

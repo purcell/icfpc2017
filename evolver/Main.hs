@@ -6,6 +6,7 @@ import GamePlay
 import Lib (readMap)
 import Offline (dumpState)
 import System.Environment (getArgs)
+import System.Exit
 
 main :: IO ()
 main = do
@@ -22,4 +23,4 @@ main = do
       let updatedState = iterate moveAndUpdate gameState !! 10
       dumpState dumpFile updatedState
       return ()
-    _ -> error "usage: evolver MAPFILE DUMPFILE"
+    _ -> die "usage: evolver MAPFILE DUMPFILE"
