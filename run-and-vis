@@ -1,0 +1,19 @@
+#!/bin/sh -e
+
+map=$1
+players=$2
+
+if [ -z "$players" ]; then
+    echo "usage: $0 map-base-name num-players" 1>&2
+    exit 1
+fi
+
+dumpfile="dumps/$map.dump"
+
+stack build
+stack exec evolver "examples/$map.json" "$dumpfile" "$players"
+
+rm -rf visualisations
+mkdir visualisations
+stack exec visualise "$dumpfile"
+open visualisations
