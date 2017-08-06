@@ -11,11 +11,9 @@ import qualified Data.Graph.Inductive.Basic as GB
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Graph.Inductive.PatriciaTree as GPT
 import qualified Data.Graph.Inductive.Query.BFS as BFS
-import Data.List as List (inits, map, sortBy)
-import Data.Maybe (listToMaybe)
-import Data.Ord (comparing)
+import qualified Data.List as List
 import Data.Semigroup ((<>))
-import Data.Set (Set, (\\))
+import Data.Set (Set)
 import qualified Data.Set as S
 import GHC.Generics (Generic)
 import Types
@@ -44,7 +42,7 @@ claimsInMoves =
          Pass _ -> mempty)
 
 moveInits :: GameState -> [[Move]]
-moveInits gameState = inits $ prevMoves gameState
+moveInits gameState = List.inits $ prevMoves gameState
 
 precomputeGameState :: SetupState -> GameState
 precomputeGameState s = GameState s []
@@ -62,25 +60,26 @@ punterIDFromMove :: Move -> PunterID
 punterIDFromMove (Pass punterID) = punterID
 punterIDFromMove (ClaimMove claim) = Types.punter claim
 
-nextMove :: GameState -> (Move, GameState)
-nextMove s = (ClaimMove bestClaim, s)
-  where
-    bestClaim = Claim (myPunterID s) (bestUnclaimedRiver s)
+data Strategy a = Strategy
+  { strategyParams :: a
+  , strategyMove :: a -> GameState -> (Move, GameState)
+  }
 
-type Strategy = GameState -> (Move, GameState)
-
-data Player = Player
-  { playerStrategy :: Strategy
+data Player a = Player
+  { playerStrategy :: Strategy a
   , playerState :: GameState
   }
 
-playerScore :: Player -> Int
+strategyApply :: Strategy a -> GameState -> (Move, GameState)
+strategyApply s = strategyMove s (strategyParams s)
+
+playerScore :: Player a -> Int
 playerScore p = scoreForPunter (playerState p) (playerPunter p)
 
-playerPunter :: Player -> PunterID
+playerPunter :: Player a -> PunterID
 playerPunter = GamePlay.punter . initialState . playerState
 
-simulate :: Map -> [Strategy] -> [Player]
+simulate :: Map -> [Strategy a] -> [Player a]
 simulate theMap strategies =
   let numPlayers = length strategies
       players = uncurry makePlayer <$> zip strategies [1 ..]
@@ -88,9 +87,8 @@ simulate theMap strategies =
         let initState = precomputeGameState (SetupState n numPlayers theMap)
         in Player s initState
       numTurns = S.size (rivers theMap)
-      playRound :: [Player] -> [Player]
       playRound (cur:others) =
-        let (move, newPS) = playerStrategy cur (playerState cur)
+        let (move, newPS) = strategyApply (playerStrategy cur) (playerState cur)
             newCur = cur {playerState = newPS}
         in (\p -> p {playerState = updateState [move] (playerState p)}) <$>
            (others ++ [newCur])
@@ -99,41 +97,6 @@ simulate theMap strategies =
 
 connectedTo :: River -> SiteID -> Bool
 connectedTo (River s t) site = s == site || t == site
-
-bestUnclaimedRiver :: GameState -> River
-bestUnclaimedRiver s =
-  case listToMaybe $ sortBy (flip $ comparing riverScore) unclaimedRivers of
-    Just r -> r
-    _ -> error "how could there not be an unclaimed river?"
-  where
-    theMap = GamePlay.map (initialState s)
-    unclaimedRivers = S.toList $ allRivers \\ claimedRivers
-    allRivers = rivers theMap
-    claimedRivers = S.map river (claims s)
-    mySites :: Set SiteID
-    mySites =
-      S.fromList $
-      concatMap
-        (\c ->
-           if myPunterID s == Types.punter c
-             then [source (river c), target (river c)]
-             else [])
-        (S.toList (claims s))
-    mineSites :: Set SiteID
-    mineSites = mines theMap
-    riverScore :: River -> Int
-    riverScore r =
-      (1 + sum (connectedMineScore <$> connectedMineSites r)) *
-      (30 ^ endsTouchingMyRivers r)
-    endsTouchingMyRivers :: River -> Int
-    endsTouchingMyRivers r = S.size (S.filter (connectedTo r) mySites)
-    connectedMineSites :: River -> [SiteID]
-    connectedMineSites r = S.toList $ S.filter (connectedTo r) mineSites
-    connectedMineScore :: SiteID -> Int
-    connectedMineScore m =
-      if S.member m mySites
-        then 2
-        else 30
 
 graph :: Map -> GPT.UGr
 graph = graphOfRivers . rivers

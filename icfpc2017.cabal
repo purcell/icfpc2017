@@ -20,6 +20,7 @@ library
                      , Visualiser
                      , Offline
                      , GamePlay
+                     , Strategy
   build-depends:       base >= 4.7 && < 5
                      , blaze-svg
                      , aeson
