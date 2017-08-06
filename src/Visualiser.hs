@@ -100,7 +100,7 @@ riverToSvg viewboxWidth claims' sites' r =
   A.strokeWidth (widthForRiver viewboxWidth riverClaimed) !
   A.stroke (colourForRiver riverClaimed claims' r)
   where
-    riverClaimed = Set.member r $ Set.map river claims'
+    riverClaimed = Set.member r $ Set.map claimRiver claims'
 
 endOfRiver :: (River -> SiteID) -> Set.Set Site -> River -> Site
 endOfRiver f sites' r =
@@ -127,7 +127,7 @@ colourForRiver riverClaimed claims' r =
            (Just p) -> colourForPunter p
     else unclaimedRiverColour
   where
-    maybePunter = Types.punter <$> find (\claim -> river claim == r) claims'
+    maybePunter = claimPunter <$> find ((r ==) . claimRiver) claims'
 
 colourForSite :: Set.Set SiteID -> Site -> S.AttributeValue
 colourForSite mineIDs site =
@@ -248,18 +248,18 @@ sampleMap =
 
 sampleMoves :: [Move]
 sampleMoves =
-  [ ClaimMove Claim {Types.punter = 0, river = River {source = 7, target = 5}}
+  [ ClaimMove 0 (River 7 5)
   , Pass 1
-  , ClaimMove Claim {Types.punter = 0, river = River {source = 3, target = 2}}
-  , ClaimMove Claim {Types.punter = 1, river = River {source = 1, target = 2}}
-  , ClaimMove Claim {Types.punter = 0, river = River {source = 5, target = 3}}
-  , ClaimMove Claim {Types.punter = 1, river = River {source = 1, target = 3}}
-  , ClaimMove Claim {Types.punter = 0, river = River {source = 0, target = 7}}
-  , ClaimMove Claim {Types.punter = 1, river = River {source = 1, target = 7}}
-  , ClaimMove Claim {Types.punter = 0, river = River {source = 4, target = 3}}
-  , ClaimMove Claim {Types.punter = 1, river = River {source = 0, target = 1}}
-  , ClaimMove Claim {Types.punter = 0, river = River {source = 5, target = 4}}
-  , ClaimMove Claim {Types.punter = 1, river = River {source = 7, target = 6}}
+  , ClaimMove 0 (River 3 2)
+  , ClaimMove 1 (River 1 2)
+  , ClaimMove 0 (River 5 3)
+  , ClaimMove 1 (River 1 3)
+  , ClaimMove 0 (River 0 7)
+  , ClaimMove 1 (River 1 7)
+  , ClaimMove 0 (River 4 3)
+  , ClaimMove 1 (River 0 1)
+  , ClaimMove 0 (River 5 4)
+  , ClaimMove 1 (River 7 6)
   ]
 
 sampleGameState :: GameState
@@ -268,6 +268,7 @@ sampleGameState =
   { initialState =
       SetupState {GamePlay.punter = 0, punters = 2, GamePlay.map = sampleMap}
   , prevMoves = sampleMoves
+  , shortestMinePaths = []
   }
 
 testRender :: IO Int

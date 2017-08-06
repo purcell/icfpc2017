@@ -32,7 +32,7 @@ instance FromJSON Site where
 instance ToJSON Site where
   toJSON (Site i l) =
     object $
-    ["id" .= i] ++
+    ("id" .= i) :
     (case l of
        Just (x, y) -> ["x" .= x, "y" .= y]
        _ -> [])
@@ -56,38 +56,31 @@ data Map = Map
   , mines :: Set SiteID
   } deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
-data Claim = Claim
-  { punter :: PunterID
-  , river :: River
-  } deriving (Eq, Ord, Show)
-
 data Move
-  = ClaimMove Claim
+  = ClaimMove PunterID
+              River
   | Pass PunterID
   | Splurge PunterID
             [SiteID]
+  | Option PunterID
+           River
   deriving (Show)
 
-instance ToJSON Claim where
-  toJSON (Claim p (River s t)) =
-    object ["punter" .= p, "source" .= s, "target" .= t]
-
-instance FromJSON Claim where
-  parseJSON (Object o) = do
-    s <- o .: "source"
-    t <- o .: "target"
-    Claim <$> o .: "punter" <*> pure (River s t)
-  parseJSON invalid = typeMismatch "Claim" invalid
-
 instance ToJSON Move where
-  toJSON (ClaimMove c) = object ["claim" .= toJSON c]
+  toJSON (ClaimMove p (River s t)) =
+    object ["claim" .= object ["punter" .= p, "source" .= s, "target" .= t]]
   toJSON (Pass p) = object ["pass" .= object ["punter" .= p]]
   toJSON (Splurge p route) =
     object ["splurge" .= object ["punter" .= p, "route" .= route]]
+  toJSON (Option p (River s t)) =
+    object ["option" .= object ["punter" .= p, "source" .= s, "target" .= t]]
 
 instance FromJSON Move where
   parseJSON (Object o) =
-    (ClaimMove <$> (o .: "claim")) <|>
+    (o .: "claim" >>= (\o2 -> ClaimMove <$> o2 .: "punter" <*> parseRiver o2)) <|>
     (o .: "pass" >>= (\o2 -> Pass <$> o2 .: "punter")) <|>
-    (o .: "splurge" >>= (\o2 -> Splurge <$> o2 .: "punter" <*> o2 .: "route"))
+    (o .: "splurge" >>= (\o2 -> Splurge <$> o2 .: "punter" <*> o2 .: "route")) <|>
+    (o .: "option" >>= (\o2 -> Option <$> o2 .: "punter" <*> parseRiver o2))
+    where
+      parseRiver o' = River <$> o' .: "source" <*> o' .: "target"
   parseJSON invalid = typeMismatch "NewOccurrence" invalid

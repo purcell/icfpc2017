@@ -1,4 +1,3 @@
-{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -30,6 +29,11 @@ data SetupState = SetupState
   , map :: Map
   } deriving (Generic, FromJSON, ToJSON)
 
+data Claim = Claim
+  { claimPunter :: PunterID
+  , claimRiver :: River
+  } deriving (Eq, Ord, Show)
+
 claims :: GameState -> Set Claim
 claims = claimsInMoves . prevMoves
 
@@ -39,8 +43,10 @@ claimsInMoves =
   concatMap
     (\m ->
        case m of
-         ClaimMove c -> pure c
-         Pass _ -> mempty)
+         ClaimMove p r -> pure (Claim p r)
+         Pass _ -> mempty
+         Option p r -> pure (Claim p r)
+         Splurge p path -> Claim p <$> S.toList (pathToRivers path))
 
 moveInits :: GameState -> [[Move]]
 moveInits gameState = List.inits $ prevMoves gameState
@@ -52,7 +58,9 @@ precomputeGameState s = GameState s [] minePaths
     g = graph (GamePlay.map s)
     minePaths =
       [pathToRivers (BFS.esp m m2 g) | (m:rest) <- List.tails ms, m2 <- rest]
-    pathToRivers nodes = S.fromList $ zipWith River nodes (tail nodes)
+
+pathToRivers :: [SiteID] -> Set River
+pathToRivers nodes = S.fromList $ zipWith River nodes (tail nodes)
 
 updateState :: [Move] -> GameState -> GameState
 updateState moves s = s {prevMoves = prevMoves s <> moves}
@@ -64,8 +72,10 @@ puntersInGame :: GameState -> S.Set PunterID
 puntersInGame state = S.fromList $ List.map punterIDFromMove $ prevMoves state
 
 punterIDFromMove :: Move -> PunterID
-punterIDFromMove (Pass punterID) = punterID
-punterIDFromMove (ClaimMove claim) = Types.punter claim
+punterIDFromMove (Pass p) = p
+punterIDFromMove (ClaimMove p _) = p
+punterIDFromMove (Splurge p _) = p
+punterIDFromMove (Option p _) = p
 
 data Strategy a = Strategy
   { strategyParams :: a
@@ -120,7 +130,7 @@ scoreForPunter :: GameState -> PunterID -> Int
 scoreForPunter gs p =
   score
     (GamePlay.map (initialState gs))
-    (S.map river (S.filter (\c -> Types.punter c == p) (claims gs)))
+    (S.map claimRiver (S.filter (\c -> claimPunter c == p) (claims gs)))
 
 score :: Map -> Set River -> Int
 score mp rs =

@@ -19,9 +19,7 @@ defaultWeights :: Weights
 defaultWeights = Weights 2 30 30 10
 
 nextMove :: Weights -> GameState -> (Move, GameState)
-nextMove ws s = (ClaimMove bestClaim, s)
-  where
-    bestClaim = Claim (myPunterID s) (bestUnclaimedRiver ws s)
+nextMove ws s = (ClaimMove (myPunterID s) (bestUnclaimedRiver ws s), s)
 
 bestUnclaimedRiver :: Weights -> GameState -> River
 bestUnclaimedRiver w s =
@@ -32,14 +30,14 @@ bestUnclaimedRiver w s =
     theMap = GamePlay.map (initialState s)
     unclaimedRivers = S.toList $ allRivers \\ claimedRivers
     allRivers = rivers theMap
-    claimedRivers = S.map river (claims s)
+    claimedRivers = S.map claimRiver (claims s)
     mySites :: Set SiteID
     mySites =
       S.fromList $
       concatMap
         (\c ->
-           if myPunterID s == Types.punter c
-             then [source (river c), target (river c)]
+           if myPunterID s == claimPunter c
+             then [source (claimRiver c), target (claimRiver c)]
              else [])
         (S.toList (claims s))
     mineSites :: Set SiteID
