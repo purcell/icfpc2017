@@ -6,7 +6,7 @@ module GamePlay where
 
 import Data.Aeson
 import Data.Foldable (concatMap, sum)
-import Data.List (inits, sortBy)
+import Data.List as List (inits, map, sortBy)
 import Data.Maybe (listToMaybe)
 import Data.Ord (comparing)
 import Data.Semigroup ((<>))
@@ -49,6 +49,13 @@ updateState moves s = s {prevMoves = prevMoves s <> moves}
 
 myPunterID :: GameState -> PunterID
 myPunterID s = GamePlay.punter (initialState s)
+
+puntersInGame :: GameState -> S.Set PunterID
+puntersInGame state = S.fromList $ List.map punterIDFromMove $ prevMoves state
+
+punterIDFromMove :: Move -> PunterID
+punterIDFromMove (Pass punterID) = punterID
+punterIDFromMove (ClaimMove claim) = Types.punter claim
 
 nextMove :: GameState -> (Move, GameState)
 nextMove s = (ClaimMove bestClaim, s)

@@ -15,29 +15,69 @@ import Types
 
 writeStateToSvgFiles :: GameState -> IO Int
 writeStateToSvgFiles gameState = do
-  let svgs =
-        List.map
-          (renderMovesOnMap (GamePlay.map $ initialState gameState))
-          (moveInits gameState)
+  let svgs = renderStateToSvgStrings gameState
   mapM_ writeSvgToFile svgs
   return $ length svgs
-
-renderMovesOnMap :: Map -> [Move] -> (Int, String)
-renderMovesOnMap map' moves =
-  let claims' = GamePlay.claimsInMoves moves
-      svgStr = renderSvg $ mapToSvg map' claims'
-  in (length moves, svgStr)
 
 writeSvgToFile :: (Int, String) -> IO ()
 writeSvgToFile (moveCount, svg) =
   writeFile ("visualisations/move-" <> show moveCount <> ".svg") svg
 
-mapToSvg :: Map -> Set.Set Claim -> S.Svg
-mapToSvg m claims' =
+renderStateToSvgStrings :: GameState -> [(Int, String)]
+renderStateToSvgStrings state =
+  List.map (renderMovesOnMap state) (moveInits state)
+
+renderMovesOnMap :: GameState -> [Move] -> (Int, String)
+renderMovesOnMap state moves =
+  let claims' = GamePlay.claimsInMoves moves
+      svgStr = renderSvg $ mapToSvg state claims'
+  in (length moves, svgStr)
+
+mapToSvg :: GameState -> Set.Set Claim -> S.Svg
+mapToSvg state claims' =
   S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" !
-  A.viewbox (viewboxAttrs m) $ do
-    mapM_ (riverToSvg claims' $ sites m) $ rivers m
-    mapM_ (siteToSvg $ mines m) $ sites m
+  A.viewbox (viewboxAttrs map') $ do
+    punterLegendToSvg state
+    mapM_ (riverToSvg claims' sites') rivers'
+    mapM_ (siteToSvg mines') sites'
+  where
+    map' = GamePlay.map $ initialState state
+    sites' = sites map'
+    mines' = mines map'
+    rivers' = rivers map'
+
+punterLegendToSvg :: GameState -> S.Svg
+punterLegendToSvg state =
+  mapM_ (punterToSvg $ myPunterID state) $ puntersInGame state
+
+punterToSvg :: PunterID -> PunterID -> S.Svg
+punterToSvg ourPunter punterToRender = do
+  colouredRectForPunter punterToRender
+  textForPunter ourPunter punterToRender
+
+colouredRectForPunter :: PunterID -> S.Svg
+colouredRectForPunter p =
+  S.rect ! colour ! rectX ! rectY ! rectWidth ! rectHeight
+  where
+    colour = A.fill (colourForPunter p)
+    rectWidth = A.width "0.2"
+    rectHeight = A.height "0.2"
+    rectX = A.x "-3.0"
+    rectY = A.y $ S.toValue (show (-3.2 - punterYOffset p))
+
+textForPunter :: PunterID -> PunterID -> S.Svg
+textForPunter ourPunter p =
+  S.text_ (S.toSvg punterDescription) ! textX ! textY ! A.fontSize "0.15"
+  where
+    textX = A.x "-3.4"
+    textY = A.y $ S.toValue (show (-3.05 - punterYOffset p))
+    punterDescription =
+      if p == ourPunter
+        then show p <> " (us)"
+        else show p
+
+punterYOffset :: PunterID -> Double
+punterYOffset p = (0.22 * fromIntegral p) :: Double
 
 siteCoords :: Site -> (Double, Double)
 siteCoords (Site _ (Just l)) = l
@@ -89,14 +129,6 @@ colourForRiver riverClaimed claims' r =
   where
     maybePunter = Types.punter <$> find (\claim -> river claim == r) claims'
 
-colourForPunter :: PunterID -> S.AttributeValue
-colourForPunter punterId =
-  case punterId of
-    0 -> firstPunterColour
-    1 -> secondPunterColour
-    2 -> thirdPunterColour
-    _ -> fourthPunterColour
-
 colourForSite :: Set.Set SiteID -> Site -> S.AttributeValue
 colourForSite mineIDs site =
   if Set.member (Types.id site) mineIDs
@@ -120,16 +152,16 @@ viewboxY :: Map -> S.AttributeValue
 viewboxY m = S.toValue $ minY m - padding
 
 viewboxW :: Map -> S.AttributeValue
-viewboxW m = S.toValue $ width m + (padding * 2)
+viewboxW m = S.toValue $ mapWidth m + (padding * 2)
 
 viewboxH :: Map -> S.AttributeValue
-viewboxH m = S.toValue $ height m + (padding * 2)
+viewboxH m = S.toValue $ mapHeight m + (padding * 2)
 
-width :: Map -> Double
-width m = maxX m - minX m
+mapWidth :: Map -> Double
+mapWidth m = maxX m - minX m
 
-height :: Map -> Double
-height m = maxY m - minY m
+mapHeight :: Map -> Double
+mapHeight m = maxY m - minY m
 
 minX :: Map -> Double
 minX m = minimum $ xs m
@@ -161,17 +193,35 @@ claimedRiverWidth = "0.04"
 unclaimedRiverColour :: S.AttributeValue
 unclaimedRiverColour = "#E2E4F6"
 
-firstPunterColour :: S.AttributeValue
-firstPunterColour = "#7DDF64"
+colourForPunter :: PunterID -> S.AttributeValue
+colourForPunter 0 = green
+colourForPunter 1 = purple
+colourForPunter 2 = yellow
+colourForPunter 3 = red
+colourForPunter 4 = darkGreen
+colourForPunter 5 = blue
+colourForPunter _ = white
 
-secondPunterColour :: S.AttributeValue
-secondPunterColour = "#8D86C9"
+green :: S.AttributeValue
+green = "#7DDF64"
 
-thirdPunterColour :: S.AttributeValue
-thirdPunterColour = "#EAD637"
+purple :: S.AttributeValue
+purple = "#8D86C9"
 
-fourthPunterColour :: S.AttributeValue
-fourthPunterColour = "#DB5461"
+yellow :: S.AttributeValue
+yellow = "#EAD637"
+
+red :: S.AttributeValue
+red = "#DB5461"
+
+white :: S.AttributeValue
+white = "#FFFFFF"
+
+darkGreen :: S.AttributeValue
+darkGreen = "#585123"
+
+blue :: S.AttributeValue
+blue = "#52B2CF"
 
 -- SAMPLE DATA:
 sampleMap :: Map
