@@ -89,7 +89,7 @@ play myname reader writer = do
     Stop _moves scores state -> do
       hPrint stderr scores
       let finalState = updateState _moves state
-      writeStateToFile finalState
+      maybeDumpState finalState
   where
     handshake = do
       send (Hello myname)
@@ -104,8 +104,8 @@ play myname reader writer = do
         Right o -> pure o
         Left e -> fail e
 
-writeStateToFile :: GameState -> IO ()
-writeStateToFile state = do
+maybeDumpState :: GameState -> IO ()
+maybeDumpState state = do
   dump <- lookupEnv "DUMP_STATE"
   case dump of
     Just dumpFile -> do
