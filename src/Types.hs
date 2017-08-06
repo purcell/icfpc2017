@@ -16,9 +16,26 @@ type PunterID = Int
 
 data Site = Site
   { id :: SiteID
-  , x :: Double
-  , y :: Double
-  } deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+  , loc :: Maybe (Double, Double)
+  } deriving (Eq, Ord, Show)
+
+instance FromJSON Site where
+  parseJSON =
+    withObject
+      "site"
+      (\o -> do
+         x <- o .:? "x"
+         y <- o .:? "y"
+         i <- o .: "id"
+         return $ Site i ((,) <$> x <*> y))
+
+instance ToJSON Site where
+  toJSON (Site i l) =
+    object $
+    ["id" .= i] ++
+    (case l of
+       Just (x, y) -> ["x" .= x, "y" .= y]
+       _ -> [])
 
 data River = River
   { source :: SiteID

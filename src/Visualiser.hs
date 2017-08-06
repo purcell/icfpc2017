@@ -39,6 +39,16 @@ mapToSvg m claims' =
     mapM_ (riverToSvg claims' $ sites m) $ rivers m
     mapM_ (siteToSvg $ mines m) $ sites m
 
+siteCoords :: Site -> (Double, Double)
+siteCoords (Site _ (Just l)) = l
+siteCoords (Site _ Nothing) = (0, 0)
+
+x :: Site -> Double
+x = fst . siteCoords
+
+y :: Site -> Double
+y = snd . siteCoords
+
 siteToSvg :: Set.Set SiteID -> Site -> S.Svg
 siteToSvg mineIDs site =
   S.circle ! A.cx (S.toValue $ x site) ! A.cy (S.toValue $ y site) ! A.r "0.1" !
@@ -169,14 +179,14 @@ sampleMap =
   Map
   { sites =
       Set.fromList
-        [ Site {Types.id = 0, x = 0.0, y = 0.0}
-        , Site {Types.id = 1, x = 1.0, y = 0.0}
-        , Site {Types.id = 2, x = 2.0, y = 0.0}
-        , Site {Types.id = 3, x = 2.0, y = -1.0}
-        , Site {Types.id = 4, x = 2.0, y = -2.0}
-        , Site {Types.id = 5, x = 1.0, y = -2.0}
-        , Site {Types.id = 6, x = 0.0, y = -2.0}
-        , Site {Types.id = 7, x = 0.0, y = -1.0}
+        [ Site {Types.id = 0, loc = Just (0.0, 0.0)}
+        , Site {Types.id = 1, loc = Just (1.0, 0.0)}
+        , Site {Types.id = 2, loc = Just (2.0, 0.0)}
+        , Site {Types.id = 3, loc = Just (2.0, -1.0)}
+        , Site {Types.id = 4, loc = Just (2.0, -2.0)}
+        , Site {Types.id = 5, loc = Just (1.0, -2.0)}
+        , Site {Types.id = 6, loc = Just (0.0, -2.0)}
+        , Site {Types.id = 7, loc = Just (0.0, -1.0)}
         ]
   , rivers =
       Set.fromList
