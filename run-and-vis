@@ -13,7 +13,6 @@ dumpfile="dumps/$map.dump"
 stack build
 stack exec evolver "examples/$map.json" "$dumpfile" "$players"
 
-rm -rf visualisations
-mkdir visualisations
+rm visualisations/*.svg
 stack exec visualise "$dumpfile"
 open visualisations
