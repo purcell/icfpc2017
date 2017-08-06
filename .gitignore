@@ -3,5 +3,5 @@ visualiser-output.svg
 /icfp-*.tar.gz
 /dist/punter
 /dist/src
-/visualisations
+state.json
 .DS_Store

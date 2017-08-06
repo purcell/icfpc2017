@@ -108,7 +108,10 @@ maybeDumpState :: GameState -> IO ()
 maybeDumpState state = do
   dump <- lookupEnv "DUMP_STATE"
   case dump of
-    Just dumpFile -> do
-      hPutStrLn stderr $ "Dumping state to " <> dumpFile
-      BL.writeFile dumpFile (encode state)
+    Just dumpFile -> dumpState dumpFile state
     _ -> pure ()
+
+dumpState :: FilePath -> GameState -> IO ()
+dumpState dumpFile state = do
+  hPutStrLn stderr $ "Dumping state to " <> dumpFile
+  BL.writeFile dumpFile (encode state)
