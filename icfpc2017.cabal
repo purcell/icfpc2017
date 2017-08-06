@@ -25,6 +25,7 @@ library
                      , aeson
                      , bytestring
                      , containers
+                     , fgl
                      , mtl
                      , text
                      , unordered-containers

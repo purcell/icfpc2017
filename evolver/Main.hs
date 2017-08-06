@@ -2,11 +2,13 @@
 
 module Main where
 
+import Data.Semigroup ((<>))
 import GamePlay
 import Lib (readMap)
 import Offline (dumpState)
 import System.Environment (getArgs)
 import System.Exit
+import System.IO (hPutStrLn, stderr)
 
 main :: IO ()
 main = do
@@ -17,7 +19,9 @@ main = do
      -> do
       Right gameMap <- readMap mapFile
       let finalPlayers = simulate gameMap (replicate (read numPlayers) nextMove)
-      let finalState = playerState $ head finalPlayers
+      let player = last finalPlayers
+          finalState = playerState player
       dumpState dumpFile finalState
+      hPutStrLn stderr $ "Scores are " <> show (playerScore <$> finalPlayers)
       return ()
     _ -> die "usage: evolver MAPFILE DUMPFILE NUMPLAYERS"

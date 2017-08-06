@@ -90,6 +90,9 @@ play myname reader writer = do
       hPrint stderr scores
       let finalState = updateState _moves state
       maybeDumpState finalState
+      hPutStrLn stderr $
+        "Calculated score: " <>
+        show (scoreForPunter finalState (myPunterID finalState))
   where
     handshake = do
       send (Hello myname)

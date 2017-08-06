@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -6,6 +7,10 @@ module GamePlay where
 
 import Data.Aeson
 import Data.Foldable (concatMap, sum)
+import qualified Data.Graph.Inductive.Basic as GB
+import qualified Data.Graph.Inductive.Graph as G
+import qualified Data.Graph.Inductive.PatriciaTree as GPT
+import qualified Data.Graph.Inductive.Query.BFS as BFS
 import Data.List as List (inits, map, sortBy)
 import Data.Maybe (listToMaybe)
 import Data.Ord (comparing)
@@ -69,12 +74,19 @@ data Player = Player
   , playerState :: GameState
   }
 
+playerScore :: Player -> Int
+playerScore p = scoreForPunter (playerState p) (playerPunter p)
+
+playerPunter :: Player -> PunterID
+playerPunter = GamePlay.punter . initialState . playerState
+
 simulate :: Map -> [Strategy] -> [Player]
 simulate theMap strategies =
   let numPlayers = length strategies
       players = uncurry makePlayer <$> zip strategies [1 ..]
       makePlayer s n =
-        Player s (precomputeGameState (SetupState n numPlayers theMap))
+        let initState = precomputeGameState (SetupState n numPlayers theMap)
+        in Player s initState
       numTurns = S.size (rivers theMap)
       playRound :: [Player] -> [Player]
       playRound (cur:others) =
@@ -122,3 +134,29 @@ bestUnclaimedRiver s =
       if S.member m mySites
         then 2
         else 30
+
+graph :: Map -> GPT.UGr
+graph = graphOfRivers . rivers
+
+graphOfRivers :: Set River -> GPT.UGr
+graphOfRivers rs = GB.undir $ G.mkUGraph nodes edges
+  where
+    nodes = S.toList $ foldr combine S.empty rs
+    combine :: River -> Set SiteID -> Set SiteID
+    combine (River s t) ss = ss `S.union` S.fromList [s, t]
+    edges = (\(River s t) -> (s, t)) <$> S.toList rs
+
+scoreForPunter :: GameState -> PunterID -> Int
+scoreForPunter gs p =
+  score
+    (GamePlay.map (initialState gs))
+    (S.map river (S.filter (\c -> Types.punter c == p) (claims gs)))
+
+score :: Map -> Set River -> Int
+score mp rs =
+  sum [shortestDist m s ^ 2 | m <- S.toList (mines mp), s <- reachableSites m]
+  where
+    fullGraph = graph mp
+    claimGraph = graphOfRivers rs
+    reachableSites m = BFS.bfs m claimGraph
+    shortestDist m s = length $ tail $ BFS.esp m s fullGraph
