@@ -36,15 +36,20 @@ renderMovesOnMap state moves =
 mapToSvg :: GameState -> Set.Set Claim -> S.Svg
 mapToSvg state claims' =
   S.docTypeSvg ! A.version "1.1" ! A.width "500" ! A.height "500" !
-  A.viewbox (viewboxAttrs map') $ do
+  A.viewbox viewboxAttrs $ do
     punterLegendToSvg state
-    mapM_ (riverToSvg claims' sites') rivers'
-    mapM_ (siteToSvg mines') sites'
+    mapM_ (riverToSvg w claims' sites') rivers'
+    mapM_ (siteToSvg w mines') sites'
   where
     map' = GamePlay.map $ initialState state
     sites' = sites map'
     mines' = mines map'
     rivers' = rivers map'
+    x' = viewboxX map'
+    y' = viewboxY map'
+    w = viewboxW map'
+    h = viewboxH map'
+    viewboxAttrs = foldr (\d m -> S.toValue d <> " " <> m) "" [x', y', w, h]
 
 punterLegendToSvg :: GameState -> S.Svg
 punterLegendToSvg state =
@@ -89,18 +94,21 @@ x = fst . siteCoords
 y :: Site -> Double
 y = snd . siteCoords
 
-siteToSvg :: Set.Set SiteID -> Site -> S.Svg
-siteToSvg mineIDs site =
-  S.circle ! A.cx (S.toValue $ x site) ! A.cy (S.toValue $ y site) ! A.r "0.1" !
-  A.fill (colourForSite mineIDs site)
+siteToSvg :: Double -> Set.Set SiteID -> Site -> S.Svg
+siteToSvg viewboxWidth mineIDs site = S.circle ! cx ! cy ! r ! colour
+  where
+    cx = A.cx (S.toValue $ x site)
+    cy = A.cy (S.toValue $ y site)
+    r = A.r $ S.toValue (viewboxWidth * 0.01)
+    colour = A.fill (colourForSite mineIDs site)
 
-riverToSvg :: Set.Set Claim -> Set.Set Site -> River -> S.Svg
-riverToSvg claims' sites' r =
+riverToSvg :: Double -> Set.Set Claim -> Set.Set Site -> River -> S.Svg
+riverToSvg viewboxWidth claims' sites' r =
   S.line ! A.x1 (S.toValue (x $ endOfRiver source sites' r)) !
   A.y1 (S.toValue (y $ endOfRiver source sites' r)) !
   A.x2 (S.toValue (x $ endOfRiver target sites' r)) !
   A.y2 (S.toValue (y $ endOfRiver target sites' r)) !
-  A.strokeWidth (widthForRiver riverClaimed) !
+  A.strokeWidth (widthForRiver viewboxWidth riverClaimed) !
   A.stroke (colourForRiver riverClaimed claims' r)
   where
     riverClaimed = Set.member r $ Set.map river claims'
@@ -113,11 +121,14 @@ endOfRiver f sites' r =
   where
     matchingSites = Set.filter (\e -> Types.id e == f r) sites'
 
-widthForRiver :: Bool -> S.AttributeValue
-widthForRiver riverClaimed =
-  if riverClaimed
-    then claimedRiverWidth
-    else unclaimedRiverWidth
+widthForRiver :: Double -> Bool -> S.AttributeValue
+widthForRiver viewboxWidth riverClaimed =
+  S.toValue $ baseWidth * (viewboxWidth * 0.1)
+  where
+    baseWidth =
+      if riverClaimed
+        then 0.05
+        else 0.03
 
 colourForRiver :: Bool -> Set.Set Claim -> River -> S.AttributeValue
 colourForRiver riverClaimed claims' r =
@@ -141,21 +152,17 @@ mineColour = "#DBAFC1"
 siteColour :: S.AttributeValue
 siteColour = "#B8BDB5"
 
-viewboxAttrs :: Map -> S.AttributeValue
-viewboxAttrs m =
-  viewboxX m <> " " <> viewboxY m <> " " <> viewboxW m <> " " <> viewboxH m
+viewboxX :: Map -> Double
+viewboxX m = minX m - padding
 
-viewboxX :: Map -> S.AttributeValue
-viewboxX m = S.toValue $ minX m - padding
+viewboxY :: Map -> Double
+viewboxY m = minY m - padding
 
-viewboxY :: Map -> S.AttributeValue
-viewboxY m = S.toValue $ minY m - padding
+viewboxW :: Map -> Double
+viewboxW m = mapWidth m + (padding * 2)
 
-viewboxW :: Map -> S.AttributeValue
-viewboxW m = S.toValue $ mapWidth m + (padding * 2)
-
-viewboxH :: Map -> S.AttributeValue
-viewboxH m = S.toValue $ mapHeight m + (padding * 2)
+viewboxH :: Map -> Double
+viewboxH m = mapHeight m + (padding * 2)
 
 mapWidth :: Map -> Double
 mapWidth m = maxX m - minX m
@@ -182,13 +189,7 @@ ys :: Map -> Set.Set Double
 ys m = Set.map y $ sites m
 
 padding :: Double
-padding = 1.0
-
-unclaimedRiverWidth :: S.AttributeValue
-unclaimedRiverWidth = "0.03"
-
-claimedRiverWidth :: S.AttributeValue
-claimedRiverWidth = "0.04"
+padding = 0.2
 
 unclaimedRiverColour :: S.AttributeValue
 unclaimedRiverColour = "#E2E4F6"
