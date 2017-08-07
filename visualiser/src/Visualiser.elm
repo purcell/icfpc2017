@@ -1,11 +1,13 @@
 module Visualiser exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (style, value)
+import Html.Events exposing (onClick, onInput)
 import Json.Decode as Json
 import Set
 import Svg as S
 import Svg.Attributes as A
+import Time exposing (Time, millisecond)
 import Decoders exposing (..)
 import Types exposing (..)
 import Exts.Maybe exposing (oneOf)
@@ -20,6 +22,10 @@ init flags =
         Ok moves ->
             { moves = moves
             , state = (normaliseCoordinates flags.initialState)
+            , time = 0
+            , animate = False
+            , movesToShow = List.length moves
+            , animationSpeed = 0.001
             }
                 ! []
 
@@ -87,14 +93,57 @@ selectClaims moves =
 
 
 type Msg
-    = LoadStateDump
+    = ToggleAnimation
+    | Tick Time
+    | ChangeAnimationSpeed String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        LoadStateDump ->
-            model ! []
+        ToggleAnimation ->
+            let
+                newNumberOfMovesToShow =
+                    if model.animate then
+                        List.length model.moves
+                    else
+                        0
+            in
+                { model
+                    | animate = not model.animate
+                    , movesToShow = newNumberOfMovesToShow
+                }
+                    ! []
+
+        Tick newTime ->
+            let
+                newNumberOfMovesToShow =
+                    if model.animate then
+                        model.movesToShow + 1
+                    else
+                        model.movesToShow
+            in
+                if newNumberOfMovesToShow > List.length model.moves then
+                    toggleAnimation model ! []
+                else
+                    { model
+                        | time = newTime
+                        , movesToShow = newNumberOfMovesToShow
+                    }
+                        ! []
+
+        ChangeAnimationSpeed newSpeed ->
+            case String.toFloat newSpeed of
+                Ok speed ->
+                    { model | animationSpeed = speed } ! []
+
+                Err _ ->
+                    model ! []
+
+
+toggleAnimation : Model -> Model
+toggleAnimation model =
+    { model | animate = not model.animate }
 
 
 
@@ -104,7 +153,10 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ (S.svg
+        [ animateButton model
+        , animationSpeedInput model
+        , p [] [ text ("Moves played: " ++ toString model.movesToShow) ]
+        , (S.svg
             [ A.version "1.1"
             , A.width "1000"
             , A.height "1000"
@@ -117,6 +169,23 @@ view model =
         , viewLegend model
         , viewDebugInfo model
         ]
+
+
+animateButton : Model -> Html Msg
+animateButton model =
+    let
+        description =
+            if model.animate then
+                "Stop Animation"
+            else
+                "Start Animation"
+    in
+        button [ onClick ToggleAnimation ] [ text description ]
+
+
+animationSpeedInput : Model -> Html Msg
+animationSpeedInput model =
+    input [ onInput ChangeAnimationSpeed, value (toString model.animationSpeed) ] []
 
 
 viewDebugInfo : Model -> Html Msg
@@ -204,7 +273,7 @@ maxY =
     maxCoord .y
 
 
-viewLegend : Model -> S.Svg Msg
+viewLegend : Model -> Html Msg
 viewLegend model =
     div []
         (List.map viewPunterLegend (puntersWhoMoved model))
@@ -212,7 +281,8 @@ viewLegend model =
 
 viewPunterLegend : Int -> Html Msg
 viewPunterLegend punter =
-    h3 [ style [ ( "color", colourForPunter punter ) ] ] [ text (toString punter) ]
+    h3 [ style [ ( "color", colourForPunter punter ) ] ]
+        [ text ("Punter " ++ toString punter) ]
 
 
 puntersWhoMoved : Model -> List Int
@@ -240,14 +310,22 @@ viewRivers model =
 
         sites =
             map.sites
+
+        riversAlreadyAnimated =
+            List.take model.movesToShow rivers
+
+        riversYetToBeAnimated =
+            List.drop model.movesToShow rivers
     in
         S.svg
             [ A.overflow "visible", A.x "0", A.y "0" ]
-            (List.map (viewRiver model) rivers)
+            ((List.map (viewColouredRiver model) riversAlreadyAnimated)
+                ++ (List.map (viewPlainRiver model) riversYetToBeAnimated)
+            )
 
 
-viewRiver : Model -> River -> S.Svg Msg
-viewRiver model river =
+viewColouredRiver : Model -> River -> S.Svg Msg
+viewColouredRiver model river =
     let
         riverEnd =
             endOfRiver model.state.map.sites river
@@ -261,7 +339,38 @@ viewRiver model river =
                     "grey"
 
                 Just claim ->
-                    colourForPunter claim.punter
+                    if True then
+                        colourForPunter claim.punter
+                    else
+                        "grey"
+    in
+        S.line
+            [ riverEnd .source .x A.x1
+            , riverEnd .source .y A.y1
+            , riverEnd .target .x A.x2
+            , riverEnd .target .y A.y2
+            , A.strokeWidth "0.003"
+            , A.stroke colour
+            ]
+            []
+
+
+viewPlainRiver : Model -> River -> S.Svg Msg
+viewPlainRiver model river =
+    let
+        riverEnd =
+            endOfRiver model.state.map.sites river
+
+        claim =
+            claimForRiver model river
+
+        colour =
+            case claim of
+                Nothing ->
+                    "grey"
+
+                Just claim ->
+                    "grey"
     in
         S.line
             [ riverEnd .source .x A.x1
@@ -311,27 +420,18 @@ viewSite model sites site =
     S.circle
         [ A.cx (toString site.x)
         , A.cy (toString site.y)
-        , A.r (radiusForSite model site)
-        , A.fill (colourForSite model site)
-          -- "red"
+        , A.r (ifMineElse model site "0.004" "0.002")
+        , A.fill (ifMineElse model site "red" "grey")
         ]
         []
 
 
-radiusForSite : Model -> Site -> String
-radiusForSite model site =
+ifMineElse : Model -> Site -> a -> a -> a
+ifMineElse model site a b =
     if List.member site.id model.state.map.mines then
-        "0.004"
+        a
     else
-        "0.002"
-
-
-colourForSite : Model -> Site -> String
-colourForSite model site =
-    if List.member site.id model.state.map.mines then
-        "red"
-    else
-        "grey"
+        b
 
 
 colourForPunter : PunterID -> String
@@ -371,4 +471,4 @@ colourForPunter punter =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Time.every (model.animationSpeed * millisecond) Tick

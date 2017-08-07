@@ -1,11 +1,16 @@
 module Types exposing (..)
 
 import Json.Decode
+import Time exposing (Time)
 
 
 type alias Model =
     { state : State
     , moves : List Move
+    , time : Time
+    , animate : Bool
+    , movesToShow : Int
+    , animationSpeed : Float
     }
 
 
