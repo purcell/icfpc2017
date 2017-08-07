@@ -89,7 +89,10 @@ play myname reader writer = do
       in send (Ready (myPunterID state') state')
     Play moves state ->
       let (move, state') = nextMove defaultWeights (updateState moves state)
-      in send $ Turn move state'
+      in do send $ Turn move state'
+            let (taken, total) = progress state'
+            hPutStrLn stderr $
+              "PROGRESS: " <> show taken <> " of " <> show total <> " moves."
     Timeout t _ -> hPutStrLn stderr $ "TIMED OUT AFTER " <> show t <> " SECONDS"
     Stop _moves scores state -> do
       hPrint stderr scores

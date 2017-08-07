@@ -115,6 +115,10 @@ simulate theMap strategies =
 connectedTo :: River -> SiteID -> Bool
 connectedTo (River s t) site = s == site || t == site
 
+progress :: GameState -> (Int, Int)
+progress s =
+  (length (prevMoves s), (S.size . rivers . GamePlay.map . initialState) s)
+
 graph :: Map -> GPT.UGr
 graph = graphOfRivers . rivers
 
