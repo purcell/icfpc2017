@@ -92,6 +92,10 @@ play myname reader writer = do
       in do send $ Turn move state'
             let (taken, total) = progress state'
             hPutStrLn stderr $
+              "PUNTER ID: " <> show (myPunterID state') <> " (" <>
+              (show . punters . initialState) state' <>
+              " total)"
+            hPutStrLn stderr $
               "PROGRESS: " <> show taken <> " of " <> show total <> " moves."
     Timeout t _ -> hPutStrLn stderr $ "TIMED OUT AFTER " <> show t <> " SECONDS"
     Stop _moves scores state -> do
