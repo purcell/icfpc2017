@@ -311,10 +311,27 @@ viewSite model sites site =
     S.circle
         [ A.cx (toString site.x)
         , A.cy (toString site.y)
-        , A.r "0.002"
-        , A.fill "red"
+        , A.r (radiusForSite model site)
+        , A.fill (colourForSite model site)
+          -- "red"
         ]
         []
+
+
+radiusForSite : Model -> Site -> String
+radiusForSite model site =
+    if List.member site.id model.state.map.mines then
+        "0.004"
+    else
+        "0.002"
+
+
+colourForSite : Model -> Site -> String
+colourForSite model site =
+    if List.member site.id model.state.map.mines then
+        "red"
+    else
+        "grey"
 
 
 colourForPunter : PunterID -> String
