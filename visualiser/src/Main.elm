@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import Visualiser exposing (..)
+import Types exposing (..)
 import Html
 
 

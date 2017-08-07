@@ -8,73 +8,16 @@ import Html exposing (..)
 import Json.Decode as Json
 import Svg as S
 import Svg.Attributes as A
+import Decoders exposing (..)
+import Types exposing (..)
 
 
 -- MODEL
 
 
-type alias Model =
-    { state : State
-    , moves : List Move
-    }
-
-
-type alias State =
-    { map : Map
-    , punter : PunterID
-    , punters : Int
-    }
-
-
-type alias Map =
-    { mines : List SiteID
-    , sites : List Site
-    , rivers : List River
-    }
-
-
-type alias Site =
-    { id : SiteID
-    , x : Float
-    , y : Float
-    }
-
-
-type alias River =
-    { source : SiteID
-    , target : SiteID
-    }
-
-
-type Move
-    = Pass Int
-    | Claim ClaimMove
-
-
-type alias ClaimMove =
-    { punter : PunterID
-    , source : SiteID
-    , target : SiteID
-    }
-
-
-type alias SiteID =
-    Int
-
-
-type alias PunterID =
-    Int
-
-
-type alias Flags =
-    { initialState : State
-    , prevMoves : Json.Value
-    }
-
-
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    case Json.decodeValue movesDecoder flags.prevMoves of
+    case Json.decodeValue decodeMoves flags.prevMoves of
         Ok moves ->
             { moves = moves, state = (normaliseCoordinates flags.initialState) } ! []
 
@@ -106,34 +49,6 @@ normaliseCoordinates originalState =
         { originalState | map = scaleMap originalState.map }
 
 
-movesDecoder : Json.Decoder (List Move)
-movesDecoder =
-    Json.list moveDecoder
-
-
-moveDecoder : Json.Decoder Move
-moveDecoder =
-    Json.oneOf
-        [ claimDecoder
-        , passDecoder
-        ]
-
-
-claimDecoder : Json.Decoder Move
-claimDecoder =
-    Json.map Claim <|
-        Json.map3 ClaimMove
-            (Json.at [ "claim", "punter" ] Json.int)
-            (Json.at [ "claim", "source" ] Json.int)
-            (Json.at [ "claim", "target" ] Json.int)
-
-
-passDecoder : Json.Decoder Move
-passDecoder =
-    Json.map Pass
-        (Json.field "punter" Json.int)
-
-
 
 -- UPDATE
 
@@ -150,6 +65,9 @@ update msg model =
 
 
 
+-- { model | state = loadStateFromDump model.dumpFile } ! []
+-- loadStateFromDump : String -> State
+-- loadStateFromDump file =
 -- VIEW
 
 
