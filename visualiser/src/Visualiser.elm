@@ -25,7 +25,7 @@ init flags =
             , time = 0
             , animate = False
             , movesToShow = List.length moves
-            , animationSpeed = 0.001
+            , animationSpeed = 100
             }
                 ! []
 
