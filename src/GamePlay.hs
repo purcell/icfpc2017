@@ -1,9 +1,11 @@
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 
 module GamePlay where
 
+import Control.Arrow ((&&&))
 import Data.Aeson
 import Data.Foldable (concatMap, sum)
 import qualified Data.Graph.Inductive.Basic as GB
@@ -11,12 +13,13 @@ import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Graph.Inductive.PatriciaTree as GPT
 import qualified Data.Graph.Inductive.Query.BFS as BFS
 import qualified Data.List as List
+import qualified Data.Map.Strict as M
 import Data.Semigroup ((<>))
 import Data.Set (Set)
 import qualified Data.Set as S
 import GHC.Generics (Generic)
 import Prelude hiding (map)
-import Types
+import Types hiding (id)
 
 data GameState = GameState
   { initialState :: SetupState
@@ -128,16 +131,27 @@ progress :: GameState -> (Int, Int)
 progress s =
   (length (prevMoves s), (S.size . rivers . GamePlay.map . initialState) s)
 
-graph :: Map -> GPT.UGr
+riversToSites :: Set River -> Set SiteID
+riversToSites = foldr combine S.empty
+  where
+    combine (River s t) ss = ss `S.union` S.fromList [s, t]
+
+claimants :: Map -> [Move] -> M.Map River [PunterID]
+claimants m mvs =
+  M.unionWith
+    (++)
+    (M.fromList
+       ((\c -> (claimRiver c, [claimPunter c])) <$> S.toList (claimsInMoves mvs)))
+    (M.fromList ((, []) <$> S.toList (rivers m)))
+
+graph :: Map -> GPT.Gr SiteID River
 graph = graphOfRivers . rivers
 
-graphOfRivers :: Set River -> GPT.UGr
-graphOfRivers rs = GB.undir $ G.mkUGraph nodes edges
+graphOfRivers :: Set River -> GPT.Gr SiteID River
+graphOfRivers rs = GB.undir $ G.mkGraph nodes edges
   where
-    nodes = S.toList $ foldr combine S.empty rs
-    combine :: River -> Set SiteID -> Set SiteID
-    combine (River s t) ss = ss `S.union` S.fromList [s, t]
-    edges = (\(River s t) -> (s, t)) <$> S.toList rs
+    nodes = (id &&& id) <$> S.toList (riversToSites rs)
+    edges = (\r@(River s t) -> (s, t, r)) <$> S.toList rs
 
 scoreForPunter :: GameState -> PunterID -> Int
 scoreForPunter gs p =

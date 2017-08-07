@@ -12,7 +12,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.Semigroup ((<>))
 import GHC.Generics (Generic)
 import GamePlay
-import Strategy (defaultWeights, nextMove)
+import Strategy (defaultWeights, nextMoveMST)
 import System.Environment (lookupEnv)
 import System.IO (hPrint, hPutStrLn, stderr)
 import Types
@@ -88,7 +88,7 @@ play myname reader writer = do
       let state' = precomputeGameState state
       in send (Ready (myPunterID state') state')
     Play moves state ->
-      let (move, state') = nextMove defaultWeights (updateState moves state)
+      let (move, state') = nextMoveMST defaultWeights (updateState moves state)
       in do send $ Turn move state'
             let (taken, total) = progress state'
             hPutStrLn stderr $

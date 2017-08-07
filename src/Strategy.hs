@@ -1,12 +1,85 @@
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
+
 module Strategy where
 
+import qualified Data.Graph.Inductive.Graph as G
+import qualified Data.Graph.Inductive.Query.MST as MST
 import Data.List as List (sortBy)
+import qualified Data.Map as M
 import Data.Maybe (listToMaybe)
 import Data.Ord (comparing)
 import qualified Data.Set as S
 import Data.Set (Set, (\\))
 import GamePlay
 import Types
+
+frequency :: (Ord a) => [a] -> [(a, Int)]
+frequency xs = M.toList (M.fromListWith (+) [(x, 1) | x <- xs])
+
+data ClaimState
+  = AlreadyClaimed
+  | Claimable
+  | Optionable
+  | Unavailable
+  deriving (Eq)
+
+nextMoveMST :: Weights -> GameState -> (Move, GameState)
+nextMoveMST _ s = (bestMove, s)
+  where
+    bestMove =
+      case claimState bestRiver of
+        Claimable -> ClaimMove me bestRiver
+        Optionable -> Option me bestRiver
+        _ -> error "unexpected claim state for best river"
+    mp = GamePlay.map (initialState s)
+    me = myPunterID s
+    g = graphOfRivers (S.filter navigable (rivers mp))
+    optionsLeft = optionsRemaining s me
+    allMines = mines mp
+    weightedGraph = G.emap edgeWeight g
+    navigable r =
+      case claimState r of
+        AlreadyClaimed -> True
+        Claimable -> True
+        _ -> False
+    edgeWeight r =
+      case claimState r of
+        AlreadyClaimed -> 0
+        Optionable -> 50
+        Claimable -> 10
+        _ -> error "unavailable river in graph"
+    pathsFromMines :: [[SiteID]]
+    pathsFromMines =
+      (fmap fst . G.unLPath) <$>
+      concatMap (`MST.msTreeAt` weightedGraph) (S.toList allMines)
+    bestRiver =
+      case listToMaybe $ filter claimable bestRivers of
+        Just r -> r
+        _ -> bestUnclaimedRiver defaultWeights s
+          -- error "Didn't find a best river"
+    claimState r =
+      case M.lookup r riverClaims of
+        Just ps
+          | me `elem` ps -> AlreadyClaimed
+        Just [] -> Claimable
+        Just [_]
+          | optionsLeft > 0 -> Optionable
+        Just _ -> Unavailable
+        Nothing -> error "missing river"
+    riverClaims = claimants mp (prevMoves s)
+    claimable :: River -> Bool
+    claimable r =
+      case claimState r of
+        Claimable -> True
+        Optionable -> True
+        _ -> False
+    -- Most critical rivers first
+    bestRivers :: [River]
+    bestRivers
+      -- fmap fst $
+      -- sortBy (flip (comparing snd)) $
+      -- frequency $
+     = concatMap (S.toList . pathToRivers) pathsFromMines
 
 data Weights = Weights
   { wConnectedNewMine :: Int

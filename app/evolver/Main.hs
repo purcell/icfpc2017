@@ -25,7 +25,7 @@ main = do
       let strategies =
             cycle
               [ Strategy defaultWeights nextMove
-              , Strategy (defaultWeights {wOnShortestMinePath = 0}) nextMove
+              , Strategy (defaultWeights {wOnShortestMinePath = 0}) nextMoveMST
               ]
       let finalPlayers = simulate gameMap (take (read numPlayers) strategies)
           player = last finalPlayers
