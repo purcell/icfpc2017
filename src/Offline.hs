@@ -39,6 +39,8 @@ data Action
   | Stop [Move]
          [Score]
          GameState
+  | Timeout Float
+            GameState
 
 data Score =
   Score PunterID
@@ -56,6 +58,7 @@ instance FromJSON Action where
       (\o ->
          (Setup <$> parseJSON (Object o)) <|>
          (Play <$> (o .: "move" >>= parseMoves) <*> o .: "state") <|>
+         (Timeout <$> o .: "timeout" <*> o .: "state") <|>
          (((o .: "stop") >>=
            withObject
              "stop"
@@ -87,6 +90,7 @@ play myname reader writer = do
     Play moves state ->
       let (move, state') = nextMove defaultWeights (updateState moves state)
       in send $ Turn move state'
+    Timeout t _ -> hPutStrLn stderr $ "TIMED OUT AFTER " <> show t <> " SECONDS"
     Stop _moves scores state -> do
       hPrint stderr scores
       let finalState = updateState _moves state
