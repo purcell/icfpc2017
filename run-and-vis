@@ -8,12 +8,11 @@ if [ -z "$players" ]; then
     exit 1
 fi
 
-dumpfile="dumps/$map.dump"
+dumpfile="dumps/elm-vis-dump.js"
+
+rm -f dumps/elm-vis-dump.js
 
 stack build
 time stack exec evolver "examples/$map.json" "$dumpfile" "$players"
 
-rm -rf visualisations
-mkdir visualisations
-stack exec visualise "$dumpfile"
-open visualisations
+open "visualiser/index.html"

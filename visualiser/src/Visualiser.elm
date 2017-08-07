@@ -1,7 +1,9 @@
 module Visualiser exposing (..)
 
 import Html exposing (..)
+import Html.Attributes exposing (style)
 import Json.Decode as Json
+import Set
 import Svg as S
 import Svg.Attributes as A
 import Decoders exposing (..)
@@ -110,9 +112,9 @@ view model =
             ]
             [ viewRivers model
             , viewSites model
-            , viewLegend model
             ]
           )
+        , viewLegend model
         , viewDebugInfo model
         ]
 
@@ -204,7 +206,27 @@ maxY =
 
 viewLegend : Model -> S.Svg Msg
 viewLegend model =
-    S.svg [] []
+    div []
+        (List.map viewPunterLegend (puntersWhoMoved model))
+
+
+viewPunterLegend : Int -> Html Msg
+viewPunterLegend punter =
+    h3 [ style [ ( "color", colourForPunter punter ) ] ] [ text (toString punter) ]
+
+
+puntersWhoMoved : Model -> List Int
+puntersWhoMoved model =
+    let
+        punterId move =
+            case move of
+                Pass id ->
+                    id
+
+                Claim claim ->
+                    claim.punter
+    in
+        Set.toList (Set.fromList (List.map punterId model.moves))
 
 
 viewRivers : Model -> S.Svg Msg

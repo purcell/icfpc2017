@@ -99,9 +99,13 @@ play myname reader writer = do
       send (Hello myname)
       (HelloBack name) <- recv
       guard $ name == myname
-    send :: ToJSON a => a -> IO ()
+    send
+      :: ToJSON a
+      => a -> IO ()
     send o = writer (encode o)
-    recv :: FromJSON a => IO a
+    recv
+      :: FromJSON a
+      => IO a
     recv = do
       input <- reader
       case eitherDecode input of
@@ -118,4 +122,4 @@ maybeDumpState state = do
 dumpState :: FilePath -> GameState -> IO ()
 dumpState dumpFile state = do
   hPutStrLn stderr $ "Dumping state to " <> dumpFile
-  BL.writeFile dumpFile (encode state)
+  BL.writeFile dumpFile $ "var dumpState = " <> encode state
