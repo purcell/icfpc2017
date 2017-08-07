@@ -6,6 +6,7 @@ import Svg as S
 import Svg.Attributes as A
 import Decoders exposing (..)
 import Types exposing (..)
+import Exts.Maybe exposing (oneOf)
 
 
 -- MODEL
@@ -48,6 +49,37 @@ normaliseCoordinates originalState =
         { originalState | map = scaleMap originalState.map }
 
 
+claimForRiver : Model -> River -> Maybe ClaimMove
+claimForRiver model river =
+    let
+        claims =
+            selectClaims model.moves
+
+        isForRiver claim =
+            case claim of
+                Nothing ->
+                    False
+
+                Just c ->
+                    c.source == river.source && c.target == river.target
+    in
+        oneOf (List.filter isForRiver claims)
+
+
+selectClaims : List Move -> List (Maybe ClaimMove)
+selectClaims moves =
+    let
+        extractClaim claim =
+            case claim of
+                Pass _ ->
+                    Nothing
+
+                Claim claim ->
+                    Just claim
+    in
+        List.map extractClaim moves
+
+
 
 -- UPDATE
 
@@ -81,12 +113,12 @@ view model =
             , viewLegend model
             ]
           )
-        , viewMapData model
+        , viewDebugInfo model
         ]
 
 
-viewMapData : Model -> Html Msg
-viewMapData model =
+viewDebugInfo : Model -> Html Msg
+viewDebugInfo model =
     let
         sites =
             model.state.map.sites
@@ -96,15 +128,20 @@ viewMapData model =
 
         mines =
             model.state.map.mines
+
+        claims =
+            selectClaims model.moves
     in
         div []
             [ p [] [ text ("Min x: " ++ toString (minCoord .x sites)) ]
-            , p [] [ text ("Min y: " ++ toString (minCoord .y sites)) ]
             , p [] [ text ("Max x: " ++ toString (maxCoord .x sites)) ]
+            , p [] [ text ("Min y: " ++ toString (minCoord .y sites)) ]
             , p [] [ text ("Max y: " ++ toString (maxCoord .y sites)) ]
+            , p [] [ text ("Number of punters: " ++ toString (model.state.punters)) ]
             , p [] [ text ("Number of rivers: " ++ toString (List.length rivers)) ]
             , p [] [ text ("Number of sites: " ++ toString (List.length sites)) ]
             , p [] [ text ("Number of mines: " ++ toString (List.length mines)) ]
+            , p [] [ text ("Number of claims: " ++ toString (List.length claims)) ]
             ]
 
 
@@ -184,14 +221,25 @@ viewRivers model =
     in
         S.svg
             [ A.overflow "visible", A.x "0", A.y "0" ]
-            (List.map (viewRiver sites) rivers)
+            (List.map (viewRiver model) rivers)
 
 
-viewRiver : List Site -> River -> S.Svg Msg
-viewRiver sites river =
+viewRiver : Model -> River -> S.Svg Msg
+viewRiver model river =
     let
         riverEnd =
-            endOfRiver sites river
+            endOfRiver model.state.map.sites river
+
+        claim =
+            claimForRiver model river
+
+        colour =
+            case claim of
+                Nothing ->
+                    "grey"
+
+                Just claim ->
+                    colourForPunter claim.punter
     in
         S.line
             [ riverEnd .source .x A.x1
@@ -199,7 +247,7 @@ viewRiver sites river =
             , riverEnd .target .x A.x2
             , riverEnd .target .y A.y2
             , A.strokeWidth "0.001"
-            , A.stroke "grey"
+            , A.stroke colour
             ]
             []
 
@@ -245,6 +293,37 @@ viewSite model sites site =
         , A.fill "red"
         ]
         []
+
+
+colourForPunter : PunterID -> String
+colourForPunter punter =
+    case punter of
+        0 ->
+            "green"
+
+        1 ->
+            "purple"
+
+        2 ->
+            "lightBlue"
+
+        3 ->
+            "red"
+
+        4 ->
+            "darkGreen"
+
+        5 ->
+            "blue"
+
+        6 ->
+            "pink"
+
+        7 ->
+            "darkRed"
+
+        _ ->
+            "black"
 
 
 
