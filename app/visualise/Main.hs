@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module RunVisualisation where
+module Main where
 
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy as BSL (readFile)

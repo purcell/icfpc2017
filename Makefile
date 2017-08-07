@@ -14,7 +14,6 @@ dist/punter:
 	stack setup
 	stack build
 	stack install --local-bin-path dist
-	mv dist/icfpc2017 dist/punter
 
 dist/src:
 	rm -rf dist/src

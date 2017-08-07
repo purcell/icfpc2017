@@ -34,8 +34,8 @@ library
   default-language:    Haskell2010
   ghc-options:         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
 
-executable icfpc2017
-  hs-source-dirs:      app
+executable punter
+  hs-source-dirs:      app/punter
   main-is:             Main.hs
   ghc-options:         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
@@ -45,9 +45,9 @@ executable icfpc2017
   default-language:    Haskell2010
 
 executable visualise
-  hs-source-dirs:      app
-  main-is:             RunVisualisation.hs
-  ghc-options:         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded -rtsopts -with-rtsopts=-N -main-is RunVisualisation
+  hs-source-dirs:      app/visualise
+  main-is:             Main.hs
+  ghc-options:         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , aeson
                      , bytestring
@@ -55,7 +55,7 @@ executable visualise
   default-language:    Haskell2010
 
 executable evolver
-  hs-source-dirs:      evolver
+  hs-source-dirs:      app/evolver
   main-is:             Main.hs
   ghc-options:         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
