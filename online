@@ -10,9 +10,9 @@ if [ -z "$PORT" ]; then
     echo "Choose port from list at http://punter.inf.ed.ac.uk/status.html" 1>&2
     exit 1
 fi
-
+export DUMP_STATE=$MYDIR/dumps/online-$PORT.dump
 lamduct \
       --game-port "$PORT" \
-      --client-instance-logfile "$MYDIR/logs/punt.log" \
+      --client-instance-logfile "$MYDIR/logs/$PORT.log" \
       --log-level 3 \
       "./punter"
