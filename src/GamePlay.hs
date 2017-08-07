@@ -15,6 +15,7 @@ import Data.Semigroup ((<>))
 import Data.Set (Set)
 import qualified Data.Set as S
 import GHC.Generics (Generic)
+import Prelude hiding (map)
 import Types
 
 data GameState = GameState
@@ -58,6 +59,14 @@ precomputeGameState s = GameState s [] minePaths
     g = graph (GamePlay.map s)
     minePaths =
       [pathToRivers (BFS.esp m m2 g) | (m:rest) <- List.tails ms, m2 <- rest]
+
+optionsRemaining :: GameState -> PunterID -> Int
+optionsRemaining s p = allowance - length (filter wasOpt (prevMoves s))
+  where
+    wasOpt (Option p' _)
+      | p' == p = True
+    wasOpt _ = False
+    allowance = S.size $ (mines . map . initialState) s
 
 pathToRivers :: [SiteID] -> Set River
 pathToRivers nodes = S.fromList $ zipWith River nodes (tail nodes)

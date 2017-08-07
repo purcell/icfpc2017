@@ -61,3 +61,8 @@ bestUnclaimedRiver w s =
       if S.member m mySites
         then wConnectedMineAgain w
         else wConnectedNewMine w
+
+data RiverFactors = RiverFactors
+  { rfEndsTouchingMyRivers :: Int
+  , rfShortestMinePathCount :: Int
+  }
