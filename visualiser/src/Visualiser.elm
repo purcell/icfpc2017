@@ -1,10 +1,6 @@
 module Visualiser exposing (..)
 
 import Html exposing (..)
-
-
--- import Html.Events exposing (..)
-
 import Json.Decode as Json
 import Svg as S
 import Svg.Attributes as A
@@ -19,7 +15,10 @@ init : Flags -> ( Model, Cmd Msg )
 init flags =
     case Json.decodeValue decodeMoves flags.prevMoves of
         Ok moves ->
-            { moves = moves, state = (normaliseCoordinates flags.initialState) } ! []
+            { moves = moves
+            , state = (normaliseCoordinates flags.initialState)
+            }
+                ! []
 
         Err err ->
             Debug.crash err
@@ -65,9 +64,6 @@ update msg model =
 
 
 
--- { model | state = loadStateFromDump model.dumpFile } ! []
--- loadStateFromDump : String -> State
--- loadStateFromDump file =
 -- VIEW
 
 
@@ -122,7 +118,11 @@ maxCoord coord sites =
     coordExtremity List.maximum coord sites
 
 
-coordExtremity : (List Float -> Maybe Float) -> (Site -> Float) -> List Site -> Float
+coordExtremity :
+    (List Float -> Maybe Float)
+    -> (Site -> Float)
+    -> List Site
+    -> Float
 coordExtremity extremity coord sites =
     Maybe.withDefault 0.0 (extremity (List.map coord sites))
 
@@ -182,7 +182,9 @@ viewRivers model =
         sites =
             map.sites
     in
-        S.svg [ A.overflow "visible", A.x "0", A.y "0" ] (List.map (viewRiver sites) rivers)
+        S.svg
+            [ A.overflow "visible", A.x "0", A.y "0" ]
+            (List.map (viewRiver sites) rivers)
 
 
 viewRiver : List Site -> River -> S.Svg Msg
@@ -202,11 +204,18 @@ viewRiver sites river =
             []
 
 
-endOfRiver : List Site -> River -> (River -> SiteID) -> (Site -> Float) -> (String -> S.Attribute Msg) -> S.Attribute Msg
+endOfRiver :
+    List Site
+    -> River
+    -> (River -> SiteID)
+    -> (Site -> Float)
+    -> (String -> S.Attribute Msg)
+    -> S.Attribute Msg
 endOfRiver sites river end xOrY attr =
     let
         sourceOrTarget =
-            List.head (List.filter (\s -> s.id == (end river)) sites)
+            List.head
+                (List.filter (\s -> s.id == (end river)) sites)
     in
         case sourceOrTarget of
             Nothing ->
@@ -222,7 +231,9 @@ viewSites model =
         sites =
             model.state.map.sites
     in
-        S.svg [ A.overflow "visible", A.x "0", A.y "0" ] (List.map (viewSite model sites) sites)
+        S.svg
+            [ A.overflow "visible", A.x "0", A.y "0" ]
+            (List.map (viewSite model sites) sites)
 
 
 viewSite : Model -> List Site -> Site -> S.Svg Msg
