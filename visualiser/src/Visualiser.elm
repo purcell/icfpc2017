@@ -188,7 +188,19 @@ viewDebugInfo model =
             , p [] [ text ("Number of sites: " ++ toString (List.length sites)) ]
             , p [] [ text ("Number of mines: " ++ toString (List.length mines)) ]
             , p [] [ text ("Number of claims: " ++ toString (List.length claims)) ]
+            , debugMoves model
             ]
+
+
+debugMoves : Model -> Html Msg
+debugMoves model =
+    div []
+        (List.map debugMove model.moves)
+
+
+debugMove : Move -> Html Msg
+debugMove move =
+    p [] [ text (toString move) ]
 
 
 viewLegend : Model -> Html Msg
