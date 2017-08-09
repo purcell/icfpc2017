@@ -11,6 +11,7 @@ import Time exposing (Time, millisecond)
 import Decoders exposing (..)
 import Types exposing (..)
 import Exts.Maybe exposing (oneOf)
+import GraphHelpers exposing (..)
 
 
 -- MODEL
@@ -18,43 +19,23 @@ import Exts.Maybe exposing (oneOf)
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    case Json.decodeValue decodeMoves flags.prevMoves of
-        Ok moves ->
-            { moves = moves
-            , state = (normaliseCoordinates flags.initialState)
-            , time = 0
-            , animate = False
-            , movesToShow = List.length moves
-            , animationSpeed = 100
-            }
-                ! []
-
-        Err err ->
-            Debug.crash err
-
-
-normaliseCoordinates : State -> State
-normaliseCoordinates originalState =
     let
-        originalSites =
-            originalState.map.sites
-
-        numberOfSites =
-            toFloat (List.length originalSites)
-
-        xRange =
-            maxX originalSites - minX originalSites
-
-        yRange =
-            maxY originalSites - minY originalSites
-
-        scaleMap map =
-            { map | sites = List.map scaleSite originalSites }
-
-        scaleSite site =
-            { site | x = (site.x / xRange), y = (site.y / yRange) }
+        state =
+            flags.initialState
     in
-        { originalState | map = scaleMap originalState.map }
+        case Json.decodeValue decodeMoves flags.prevMoves of
+            Ok moves ->
+                { moves = moves
+                , state = { state | map = normaliseCoords state.map }
+                , time = 0
+                , animate = False
+                , movesToShow = List.length moves
+                , animationSpeed = 100
+                }
+                    ! []
+
+            Err err ->
+                Debug.crash err
 
 
 claimForRiver : Model -> River -> Maybe ClaimMove
@@ -158,8 +139,6 @@ view model =
         , p [] [ text ("Moves played: " ++ toString model.movesToShow) ]
         , (S.svg
             [ A.version "1.1"
-            , A.width "1000"
-            , A.height "1000"
             , A.viewBox "-1 -1 2 2"
             ]
             [ viewRivers model
@@ -204,73 +183,12 @@ viewDebugInfo model =
             selectClaims model.moves
     in
         div []
-            [ p [] [ text ("Min x: " ++ toString (minCoord .x sites)) ]
-            , p [] [ text ("Max x: " ++ toString (maxCoord .x sites)) ]
-            , p [] [ text ("Min y: " ++ toString (minCoord .y sites)) ]
-            , p [] [ text ("Max y: " ++ toString (maxCoord .y sites)) ]
-            , p [] [ text ("Number of punters: " ++ toString (model.state.punters)) ]
+            [ p [] [ text ("Number of punters: " ++ toString (model.state.punters)) ]
             , p [] [ text ("Number of rivers: " ++ toString (List.length rivers)) ]
             , p [] [ text ("Number of sites: " ++ toString (List.length sites)) ]
             , p [] [ text ("Number of mines: " ++ toString (List.length mines)) ]
             , p [] [ text ("Number of claims: " ++ toString (List.length claims)) ]
             ]
-
-
-minCoord : (Site -> Float) -> List Site -> Float
-minCoord coord sites =
-    coordExtremity List.minimum coord sites
-
-
-maxCoord : (Site -> Float) -> List Site -> Float
-maxCoord coord sites =
-    coordExtremity List.maximum coord sites
-
-
-coordExtremity :
-    (List Float -> Maybe Float)
-    -> (Site -> Float)
-    -> List Site
-    -> Float
-coordExtremity extremity coord sites =
-    Maybe.withDefault 0.0 (extremity (List.map coord sites))
-
-
-viewboxWidth : Model -> Float
-viewboxWidth model =
-    let
-        sites =
-            model.state.map.sites
-    in
-        (maxX sites) - (minX sites)
-
-
-viewboxHeight : Model -> Float
-viewboxHeight model =
-    let
-        sites =
-            model.state.map.sites
-    in
-        (maxY sites) - (minY sites)
-
-
-minX : List Site -> Float
-minX =
-    minCoord .x
-
-
-minY : List Site -> Float
-minY =
-    minCoord .y
-
-
-maxX : List Site -> Float
-maxX =
-    maxCoord .x
-
-
-maxY : List Site -> Float
-maxY =
-    maxCoord .y
 
 
 viewLegend : Model -> Html Msg
@@ -318,66 +236,33 @@ viewRivers model =
             List.drop model.movesToShow rivers
     in
         S.svg
-            [ A.overflow "visible", A.x "0", A.y "0" ]
-            ((List.map (viewColouredRiver model) riversAlreadyAnimated)
-                ++ (List.map (viewPlainRiver model) riversYetToBeAnimated)
-            )
+            [ A.x "-1", A.y "-1", A.overflow "visible" ]
+            (List.map (viewRiver model riversAlreadyAnimated) rivers)
 
 
-viewColouredRiver : Model -> River -> S.Svg Msg
-viewColouredRiver model river =
+viewRiver : Model -> List River -> River -> S.Svg Msg
+viewRiver model animatedRivers river =
     let
         riverEnd =
             endOfRiver model.state.map.sites river
 
-        claim =
-            claimForRiver model river
-
-        colour =
-            case claim of
+        ( colour, width ) =
+            case claimForRiver model river of
                 Nothing ->
-                    "grey"
+                    ( "grey", "0.001" )
 
                 Just claim ->
-                    if True then
-                        colourForPunter claim.punter
+                    if List.member river animatedRivers then
+                        ( colourForPunter claim.punter, "0.003" )
                     else
-                        "grey"
+                        ( "grey", "0.001" )
     in
         S.line
             [ riverEnd .source .x A.x1
             , riverEnd .source .y A.y1
             , riverEnd .target .x A.x2
             , riverEnd .target .y A.y2
-            , A.strokeWidth "0.003"
-            , A.stroke colour
-            ]
-            []
-
-
-viewPlainRiver : Model -> River -> S.Svg Msg
-viewPlainRiver model river =
-    let
-        riverEnd =
-            endOfRiver model.state.map.sites river
-
-        claim =
-            claimForRiver model river
-
-        colour =
-            case claim of
-                Nothing ->
-                    "grey"
-
-                Just claim ->
-                    "grey"
-    in
-        S.line
-            [ riverEnd .source .x A.x1
-            , riverEnd .source .y A.y1
-            , riverEnd .target .x A.x2
-            , riverEnd .target .y A.y2
-            , A.strokeWidth "0.001"
+            , A.strokeWidth width
             , A.stroke colour
             ]
             []
@@ -411,7 +296,7 @@ viewSites model =
             model.state.map.sites
     in
         S.svg
-            [ A.overflow "visible", A.x "0", A.y "0" ]
+            [ A.x "-1", A.y "-1", A.overflow "visible" ]
             (List.map (viewSite model sites) sites)
 
 
