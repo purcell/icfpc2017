@@ -4,7 +4,7 @@
 
 The [ICFP Programming Contest](https://en.wikipedia.org/wiki/ICFP_Programming_Contest) is a prestigious annual global coding contest in which teams from around the world build programs that compete against each other. I (Steve) had [entered solo in 2015](https://github.com/purcell/icfpc2015), and with [other colleagues in 2016](https://github.com/purcell/icfpc2016).
 
-For 2017 I was joined by a crack coding team composed of Timothy Barraclough, Pragya Mohan and Kieran Trezona-le Compte. We were all friends and colleagues at Flux Federation (formerly [Powershop](http://www.powershop.co.nz/)) in windy Wellington, New Zealand, though I had just left the company the day before the contest and was officially _funemployed_ for a week.
+For 2017 I was joined by a crack coding team composed of Timothy Barraclough, Pragya Mohan and Kieran Trezona-le Compte. We were all friends and colleagues at Flux Federation (formerly [Powershop HQ](http://www.powershop.co.nz/)) in windy Wellington, New Zealand, though I had just left the company the day before the contest and was officially _funemployed_ for a week.
 
 ## The task
 
