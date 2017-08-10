@@ -25,7 +25,10 @@ main = do
       Right gameMap <- readMap mapFile
       let strategies =
             cycle
-              [ ("Original", nextMove defaultWeights)
+              [ ("FirstUnclaimed", nextMoveFirstUnclaimed)
+              , ( "HeuristicNoMineShortestPath"
+                , nextMove (defaultWeights {wOnShortestMinePath = 0}))
+              , ("Heuristic", nextMove defaultWeights)
               , ( "Hybrid"
                 , nextMoveMST (defaultWeights {wOnShortestMinePath = 0}))
               ]

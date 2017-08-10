@@ -63,13 +63,13 @@ precomputeGameState s = GameState s [] minePaths
     minePaths =
       [pathToRivers (BFS.esp m m2 g) | (m:rest) <- List.tails ms, m2 <- rest]
 
-optionsRemaining :: GameState -> PunterID -> Int
-optionsRemaining s p = allowance - length (filter wasOpt (prevMoves s))
+optionsRemaining :: Map -> [Move] -> PunterID -> Int
+optionsRemaining m moves p = allowance - length (filter wasOpt moves)
   where
     wasOpt (Option p' _)
       | p' == p = True
     wasOpt _ = False
-    allowance = S.size $ (mines . map . initialState) s
+    allowance = S.size (mines m)
 
 pathToRivers :: [SiteID] -> Set River
 pathToRivers nodes = S.fromList $ zipWith River nodes (tail nodes)
@@ -99,7 +99,7 @@ simulate theMap namedStrategies =
       players =
         (\((name, strat), n) ->
            (name, strat, precomputeGameState (SetupState n numPlayers theMap))) <$>
-        (zip namedStrategies [0 .. (numPlayers - 1)])
+        zip namedStrategies [0 .. (numPlayers - 1)]
       numTurns = S.size (rivers theMap)
       playRound ((name, strat, state):others) =
         let (move, state') = strat state
@@ -121,13 +121,47 @@ riversToSites = foldr combine S.empty
   where
     combine (River s t) ss = ss `S.union` S.fromList [s, t]
 
-claimants :: Map -> [Move] -> M.Map River [PunterID]
+type Claimants = M.Map River [PunterID]
+
+claimants :: Map -> [Move] -> Claimants
 claimants m mvs =
   M.unionWith
     (++)
     (M.fromList
        ((\c -> (claimRiver c, [claimPunter c])) <$> S.toList (claimsInMoves mvs)))
     (M.fromList ((, []) <$> S.toList (rivers m)))
+
+data ClaimState
+  = AlreadyClaimed
+  | Unclaimed
+  | Optionable
+  | Unavailable
+  deriving (Eq)
+
+claimable :: ClaimState -> Bool
+claimable Unclaimed = True
+claimable Optionable = True
+claimable _ = False
+
+claimStates :: GameState -> M.Map River ClaimState
+claimStates gs = claimState <$> riverClaims
+  where
+    mp = map (initialState gs)
+    moves = prevMoves gs
+    punterID = myPunterID gs
+    riverClaims = claimants mp moves
+    optionsLeft = optionsRemaining mp moves punterID
+    claimState ps
+      | punterID `elem` ps = AlreadyClaimed
+    claimState [] = Unclaimed
+    claimState [_]
+      | optionsLeft > 0 = Optionable
+    claimState _ = Unavailable
+
+filterRiversByClaim ::
+     M.Map River ClaimState -> (ClaimState -> Bool) -> Set River
+filterRiversByClaim riverClaims f =
+  S.fromList [r | (r, c) <- M.toList riverClaims, f c]
 
 graph :: Map -> GPT.Gr SiteID River
 graph = graphOfRivers . rivers

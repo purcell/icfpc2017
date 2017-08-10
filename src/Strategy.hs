@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
+{-# LANGUAGE TupleSections #-}
 
 module Strategy where
 
@@ -13,66 +14,54 @@ import Data.Set (Set, (\\))
 import GamePlay
 import Types
 
+nextMoveFirstUnclaimed :: GameState -> (Move, GameState)
+nextMoveFirstUnclaimed s =
+  (ClaimMove (myPunterID s) (head (S.toList available)), s)
+  where
+    riverClaims = claimStates s
+    available = filterRiversByClaim riverClaims (== Unclaimed)
+
 frequency :: (Ord a) => [a] -> [(a, Int)]
 frequency xs = M.toList (M.fromListWith (+) [(x, 1) | x <- xs])
-
-data ClaimState
-  = AlreadyClaimed
-  | Claimable
-  | Optionable
-  | Unavailable
-  deriving (Eq)
 
 nextMoveMST :: Weights -> GameState -> (Move, GameState)
 nextMoveMST _ s = (bestMove, s)
   where
     bestMove =
       case claimState bestRiver of
-        Claimable -> ClaimMove me bestRiver
+        Unclaimed -> ClaimMove me bestRiver
         Optionable -> Option me bestRiver
         _ -> error "unexpected claim state for best river"
     mp = GamePlay.map (initialState s)
     me = myPunterID s
-    g = graphOfRivers (S.filter navigable (rivers mp))
-    optionsLeft = optionsRemaining s me
+    g = graphOfRivers navigable
     allMines = mines mp
     weightedGraph = G.emap edgeWeight g
-    navigable r =
-      case claimState r of
-        AlreadyClaimed -> True
-        Claimable -> True
-        _ -> False
     edgeWeight r =
       case claimState r of
         AlreadyClaimed -> 0
         Optionable -> 50
-        Claimable -> 10
+        Unclaimed -> 10
         _ -> error "unavailable river in graph"
     pathsFromMines :: [[SiteID]]
     pathsFromMines =
       (fmap fst . G.unLPath) <$>
       concatMap (`MST.msTreeAt` weightedGraph) (S.toList allMines)
     bestRiver =
-      case listToMaybe $ filter claimable bestRivers of
+      case listToMaybe $ filter (`S.member` claimableRivers) bestRivers of
         Just r -> r
         _ -> bestUnclaimedRiver defaultWeights s
           -- error "Didn't find a best river"
-    claimState r =
-      case M.lookup r riverClaims of
-        Just ps
-          | me `elem` ps -> AlreadyClaimed
-        Just [] -> Claimable
-        Just [_]
-          | optionsLeft > 0 -> Optionable
-        Just _ -> Unavailable
-        Nothing -> error "missing river"
-    riverClaims = claimants mp (prevMoves s)
-    claimable :: River -> Bool
-    claimable r =
-      case claimState r of
-        Claimable -> True
-        Optionable -> True
-        _ -> False
+    riverClaims = claimStates s
+    navigable =
+      filterRiversByClaim
+        riverClaims
+        (\c ->
+           case c of
+             AlreadyClaimed -> True
+             _ -> claimable c)
+    claimableRivers = filterRiversByClaim riverClaims claimable
+    claimState r = riverClaims M.! r
     -- Most critical rivers first
     bestRivers :: [River]
     bestRivers
@@ -141,7 +130,8 @@ bestUnclaimedRiver w s =
       , rfConnectedNewMines =
           sum [1 | m <- connectedMineSites r, m `S.notMember` mySites]
       , rfNumPathsBetweenMines = length $ shortestMinePaths s
-      , rfOptionsRemaining = optionsRemaining s (myPunterID s)
+      , rfOptionsRemaining =
+          optionsRemaining theMap (prevMoves s) (myPunterID s)
       }
     connectedMineSites :: River -> [SiteID]
     connectedMineSites r = S.toList $ S.filter (connectedTo r) mineSites
