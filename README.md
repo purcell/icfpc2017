@@ -50,7 +50,9 @@ In the final 24-hour chunk, most of the team was back at work, and we had lost o
 
 The FGL library pointed me towards [Minimum Spanning Trees](https://en.wikipedia.org/wiki/Minimum_spanning_tree), which are the cheapest paths by which to reach all the points on a graph, given that the graph's edges can have varying costs.
 
-My approach, then, was to compute Minimum Spanning Trees from every mine, where the cost of each river we already owned would be zero, and every other river would cost a fixed amount. Given the rivers in all those spanning trees, I'd then prioritise the ones seen most frequently. And since the MSTs would be recomputed each turn, they would adapt to other players' claims and obstructions. In the event that critical rivers were claimed by other users, this strategy would even use the Options rule extension to use those if necessary.
+My approach, then, was to compute a Minimum Spanning Tree from each mine, where the cost of each river we already owned would be zero, and every other river would cost a fixed amount. Given the rivers in all those spanning trees, we'd then prioritise the ones seen most frequently. This strategy would also automatically identify and prioritise important "bridge" rivers between disjoint map regions, since bridge rivers would appear in more MSTs.
+
+And since the MSTs would be recomputed each turn, they would adapt to other players' claims and obstructions. In the event that critical rivers were claimed by other users, this strategy would even use the Options rule extension to use those if necessary.
 
 It took a long time to pull this together, because my poor brain was flagging. Eventually I was able to run it, and it crushed our old strategy on an initial test. But: tragedy! In other tests, it completely failed to find rivers, because I'd clearly made a stupid error in my code or assumptions (or both!).
 
