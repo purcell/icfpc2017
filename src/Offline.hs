@@ -12,7 +12,6 @@ import qualified Data.HashMap.Strict as HM
 import Data.Semigroup ((<>))
 import GHC.Generics (Generic)
 import GamePlay
-import Strategy (defaultWeights, nextMoveMST)
 import System.Environment (lookupEnv)
 import System.IO (hPrint, hPutStrLn, stderr)
 import Types
@@ -77,8 +76,9 @@ instance ToJSON Turn where
       (Object o) -> Object (HM.insert "state" (toJSON s) o)
       _ -> error "kaboom"
 
-play :: String -> IO BL.ByteString -> (BL.ByteString -> IO ()) -> IO ()
-play myname reader writer = do
+play ::
+     Strategy -> String -> IO BL.ByteString -> (BL.ByteString -> IO ()) -> IO ()
+play strat myname reader writer = do
   handshake
   action <- recv
   case action of
@@ -88,7 +88,7 @@ play myname reader writer = do
       let state' = precomputeGameState state
       in send (Ready (myPunterID state') state')
     Play moves state ->
-      let (move, state') = nextMoveMST defaultWeights (updateState moves state)
+      let (move, state') = strat (updateState moves state)
       in do send $ Turn move state'
             let (taken, total) = progress state'
             hPutStrLn stderr $

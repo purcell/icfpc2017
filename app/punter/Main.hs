@@ -6,10 +6,11 @@ import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import Data.Semigroup ((<>))
 import Offline
+import Strategy
 import System.IO (hFlush, hPutStrLn, stderr, stdin, stdout)
 
 main :: IO ()
-main = play "flux-ambassadors" reader writer
+main = play (nextMoveMST defaultWeights) "flux-ambassadors" reader writer
   where
     reader = do
       firstChunk <- B.hGet stdin 10
