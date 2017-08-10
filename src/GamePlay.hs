@@ -89,40 +89,25 @@ punterIDFromMove (ClaimMove p _) = p
 punterIDFromMove (Splurge p _) = p
 punterIDFromMove (Option p _) = p
 
-data Strategy a = Strategy
-  { strategyParams :: a
-  , strategyMove :: a -> GameState -> (Move, GameState)
-  }
+type Strategy = GameState -> (Move, GameState)
 
-data Player a = Player
-  { playerStrategy :: Strategy a
-  , playerState :: GameState
-  }
-
-strategyApply :: Strategy a -> GameState -> (Move, GameState)
-strategyApply s = strategyMove s (strategyParams s)
-
-playerScore :: Player a -> Int
-playerScore p = scoreForPunter (playerState p) (playerPunter p)
-
-playerPunter :: Player a -> PunterID
-playerPunter = GamePlay.punter . initialState . playerState
-
-simulate :: Map -> [Strategy a] -> [Player a]
-simulate theMap strategies =
-  let numPlayers = length strategies
-      players = uncurry makePlayer <$> zip strategies [1 ..]
-      makePlayer s n =
-        let initState = precomputeGameState (SetupState n numPlayers theMap)
-        in Player s initState
+-- | Run the labelled strategies against each other on a given map and return the
+-- evolving gameplay.
+simulate :: Map -> [(a, Strategy)] -> [[(a, GameState)]]
+simulate theMap namedStrategies =
+  let numPlayers = length namedStrategies
+      players =
+        (\((name, strat), n) ->
+           (name, strat, precomputeGameState (SetupState n numPlayers theMap))) <$>
+        (zip namedStrategies [0 .. (numPlayers - 1)])
       numTurns = S.size (rivers theMap)
-      playRound (cur:others) =
-        let (move, newPS) = strategyApply (playerStrategy cur) (playerState cur)
-            newCur = cur {playerState = newPS}
-        in (\p -> p {playerState = updateState [move] (playerState p)}) <$>
-           (others ++ [newCur])
+      playRound ((name, strat, state):others) =
+        let (move, state') = strat state
+        in (\(nm, str, sta) -> (nm, str, updateState [move] sta)) <$>
+           (others ++ [(name, strat, state')])
       playRound [] = []
-  in iterate playRound players !! numTurns
+  in fmap (\(nm, _, sta) -> (nm, sta)) <$>
+     take numTurns (iterate playRound players)
 
 connectedTo :: River -> SiteID -> Bool
 connectedTo (River s t) site = s == site || t == site
@@ -152,6 +137,9 @@ graphOfRivers rs = GB.undir $ G.mkGraph nodes edges
   where
     nodes = (id &&& id) <$> S.toList (riversToSites rs)
     edges = (\r@(River s t) -> (s, t, r)) <$> S.toList rs
+
+scoreForThisPunter :: GameState -> Int
+scoreForThisPunter gs = scoreForPunter gs (myPunterID gs)
 
 scoreForPunter :: GameState -> PunterID -> Int
 scoreForPunter gs p =

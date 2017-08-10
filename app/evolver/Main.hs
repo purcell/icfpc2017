@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -24,18 +25,22 @@ main = do
       Right gameMap <- readMap mapFile
       let strategies =
             cycle
-              [ Strategy defaultWeights nextMove
-              , Strategy (defaultWeights {wOnShortestMinePath = 0}) nextMoveMST
+              [ ("Original", nextMove defaultWeights)
+              , ( "Hybrid"
+                , nextMoveMST (defaultWeights {wOnShortestMinePath = 0}))
               ]
-      let finalPlayers = simulate gameMap (take (read numPlayers) strategies)
-          player = last finalPlayers
-          finalState = playerState player
-      let playersWithScores = (zip finalPlayers (playerScore <$> finalPlayers))
-      forM_ (sortBy (comparing snd) playersWithScores) $ \(p, sc) ->
+      let finalPlayers :: [(String, GameState)] =
+            last (simulate gameMap (take (read numPlayers) strategies))
+          (_, finalState) = last finalPlayers
+      let playersWithScores =
+            (zip
+               finalPlayers
+               ((\(_, gs) -> scoreForThisPunter gs) <$> finalPlayers))
+      forM_ (sortBy (comparing snd) playersWithScores) $ \((name, gs), sc) ->
         hPutStrLn stderr $
-        "Player " <> show (playerPunter p) <> ", weights " <>
-        show (strategyParams (playerStrategy p)) <>
-        ", score " <>
+        "Player " <> show (punter (initialState gs)) <> ", strategy=" <>
+        show name <>
+        ", score=" <>
         show sc
       dumpState dumpFile finalState
     _ -> die "usage: evolver MAPFILE DUMPFILE NUMPLAYERS"
