@@ -50,7 +50,7 @@ claimsInMoves =
          ClaimMove p r -> pure (Claim p r)
          Pass _ -> mempty
          Option p r -> pure (Claim p r)
-         Splurge p path -> Claim p <$> S.toList (pathToRivers path))
+         Splurge p path -> Claim p <$> pathToRivers path)
 
 moveInits :: GameState -> [[Move]]
 moveInits gameState = List.inits $ prevMoves gameState
@@ -61,7 +61,10 @@ precomputeGameState s = GameState s [] minePaths
     ms = S.toList $ mines (GamePlay.map s)
     g = graph (GamePlay.map s)
     minePaths =
-      [pathToRivers (BFS.esp m m2 g) | (m:rest) <- List.tails ms, m2 <- rest]
+      [ S.fromList $ pathToRivers (BFS.esp m m2 g)
+      | (m:rest) <- List.tails ms
+      , m2 <- rest
+      ]
 
 optionsRemaining :: Map -> [Move] -> PunterID -> Int
 optionsRemaining m moves p = allowance - length (filter wasOpt moves)
@@ -71,8 +74,8 @@ optionsRemaining m moves p = allowance - length (filter wasOpt moves)
     wasOpt _ = False
     allowance = S.size (mines m)
 
-pathToRivers :: [SiteID] -> Set River
-pathToRivers nodes = S.fromList $ zipWith River nodes (tail nodes)
+pathToRivers :: [SiteID] -> [River]
+pathToRivers nodes = zipWith River nodes (tail nodes)
 
 updateState :: [Move] -> GameState -> GameState
 updateState moves s = s {prevMoves = prevMoves s <> moves}
@@ -142,6 +145,10 @@ claimable :: ClaimState -> Bool
 claimable Unclaimed = True
 claimable Optionable = True
 claimable _ = False
+
+potentiallyNavigable :: ClaimState -> Bool
+potentiallyNavigable AlreadyClaimed = True
+potentiallyNavigable c = claimable c
 
 claimStates :: GameState -> M.Map River ClaimState
 claimStates gs = claimState <$> riverClaims

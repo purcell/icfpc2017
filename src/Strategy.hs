@@ -1,13 +1,13 @@
 {-# OPTIONS_GHC -fno-warn-type-defaults #-}
-{-# LANGUAGE TupleSections #-}
 
 module Strategy where
 
+import Data.Foldable (asum)
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Graph.Inductive.Query.MST as MST
 import Data.List as List (sortBy)
 import qualified Data.Map as M
-import Data.Maybe (listToMaybe)
+import Data.Maybe (fromJust, listToMaybe)
 import Data.Ord (comparing)
 import qualified Data.Set as S
 import Data.Set (Set, (\\))
@@ -21,11 +21,11 @@ nextMoveFirstUnclaimed s =
     riverClaims = claimStates s
     available = filterRiversByClaim riverClaims (== Unclaimed)
 
-frequency :: (Ord a) => [a] -> [(a, Int)]
-frequency xs = M.toList (M.fromListWith (+) [(x, 1) | x <- xs])
+frequency :: (Ord a) => [a] -> M.Map a Int
+frequency xs = M.fromListWith (+) [(x, 1) | x <- xs]
 
-nextMoveMST :: Weights -> GameState -> (Move, GameState)
-nextMoveMST _ s = (bestMove, s)
+nextMoveMST :: GameState -> (Move, GameState)
+nextMoveMST s = (bestMove, s)
   where
     bestMove =
       case claimState bestRiver of
@@ -34,7 +34,7 @@ nextMoveMST _ s = (bestMove, s)
         _ -> error "unexpected claim state for best river"
     mp = GamePlay.map (initialState s)
     me = myPunterID s
-    g = graphOfRivers navigable
+    g = graphOfRivers (filterRiversByClaim riverClaims potentiallyNavigable)
     allMines = mines mp
     weightedGraph = G.emap edgeWeight g
     edgeWeight r =
@@ -47,28 +47,18 @@ nextMoveMST _ s = (bestMove, s)
     pathsFromMines =
       (fmap fst . G.unLPath) <$>
       concatMap (`MST.msTreeAt` weightedGraph) (S.toList allMines)
+    riversFromMines :: [(Int, River)]
+    riversFromMines = concatMap (zip [0 ..] . pathToRivers) pathsFromMines
+    closestRiversToMines = snd <$> sortBy (comparing fst) riversFromMines
+    bestRiverOnMST :: Maybe River
+    bestRiverOnMST =
+      listToMaybe (filter (`S.member` claimableRivers) closestRiversToMines)
     bestRiver =
-      case listToMaybe $ filter (`S.member` claimableRivers) bestRivers of
-        Just r -> r
-        _ -> bestUnclaimedRiver defaultWeights s
-          -- error "Didn't find a best river"
+      fromJust $ asum [bestRiverOnMST, (listToMaybe (S.toList unclaimed))]
     riverClaims = claimStates s
-    navigable =
-      filterRiversByClaim
-        riverClaims
-        (\c ->
-           case c of
-             AlreadyClaimed -> True
-             _ -> claimable c)
-    claimableRivers = filterRiversByClaim riverClaims claimable
     claimState r = riverClaims M.! r
-    -- Most critical rivers first
-    bestRivers :: [River]
-    bestRivers
-      -- fmap fst $
-      -- sortBy (flip (comparing snd)) $
-      -- frequency $
-     = concatMap (S.toList . pathToRivers) pathsFromMines
+    claimableRivers = filterRiversByClaim riverClaims claimable
+    unclaimed = filterRiversByClaim riverClaims (== Unclaimed)
 
 data Weights = Weights
   { wConnectedNewMine :: Int
@@ -85,7 +75,10 @@ data RiverFactors = RiverFactors
   , rfConnectedNewMines :: Int
   , rfNumPathsBetweenMines :: Int
   , rfOptionsRemaining :: Int
-  }
+  } deriving (Eq, Ord)
+
+defaultFactors :: RiverFactors
+defaultFactors = RiverFactors 0 0 0 0 0
 
 riverScore :: Weights -> RiverFactors -> Int
 riverScore w f =
@@ -100,17 +93,27 @@ nextMove :: Weights -> GameState -> (Move, GameState)
 nextMove ws s = (ClaimMove (myPunterID s) (bestUnclaimedRiver ws s), s)
 
 bestUnclaimedRiver :: Weights -> GameState -> River
-bestUnclaimedRiver w s =
-  case listToMaybe $
-       sortBy (flip $ comparing (riverScore w . riverFactors)) unclaimedRivers of
-    Just r -> r
-    _ -> error "how could there not be an unclaimed river?"
+bestUnclaimedRiver w s = bestRankedRiver w (basicRiverFactors s unclaimedRivers)
   where
     theMap = GamePlay.map (initialState s)
     -- TODO: include rivers where options are available
-    unclaimedRivers = S.toList $ allRivers \\ claimedRivers
+    unclaimedRivers = allRivers \\ claimedRivers
     allRivers = rivers theMap
     claimedRivers = S.map claimRiver (claims s)
+
+bestRankedRiver :: Weights -> Set (River, RiverFactors) -> River
+bestRankedRiver w riversAndFactors =
+  case listToMaybe rankedRivers of
+    Just (r, _) -> r
+    _ -> error "no river to rank"
+  where
+    rankedRivers =
+      sortBy (flip $ comparing (riverScore w . snd)) $ S.toList riversAndFactors
+
+basicRiverFactors :: GameState -> Set River -> Set (River, RiverFactors)
+basicRiverFactors s = S.map (\r -> (r, riverFactors r))
+  where
+    theMap = GamePlay.map (initialState s)
     mySites :: Set SiteID
     mySites =
       S.fromList $
@@ -123,7 +126,7 @@ bestUnclaimedRiver w s =
     mineSites :: Set SiteID
     mineSites = mines theMap
     riverFactors r =
-      RiverFactors
+      defaultFactors
       { rfEndsTouchingMyRivers = S.size (S.filter (connectedTo r) mySites)
       , rfShortestMinePathCount =
           sum [1 | p <- shortestMinePaths s, r `S.member` p]

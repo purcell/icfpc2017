@@ -10,7 +10,7 @@ import Strategy
 import System.IO (hFlush, hPutStrLn, stderr, stdin, stdout)
 
 main :: IO ()
-main = play (nextMoveMST defaultWeights) "flux-ambassadors" reader writer
+main = play nextMoveMST "flux-ambassadors" reader writer
   where
     reader = do
       firstChunk <- B.hGet stdin 10

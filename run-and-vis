@@ -2,16 +2,17 @@
 
 map=$1
 players=$2
+dump_game_num=$3
 
-if [ -z "$players" ]; then
-    echo "usage: $0 map-base-name num-players" 1>&2
+if [ -z "$dump_game_num" ]; then
+    echo "usage: $0 map-base-name player dump-game-num" 1>&2
     exit 1
 fi
 
 dumpfile="dumps/$map.dump"
 
 stack build
-time stack exec evolver "examples/$map.json" "$dumpfile" "$players"
+time stack exec evolver "examples/$map.json" "$players" "$dump_game_num" "$dumpfile"
 
 rm -rf visualisations
 mkdir visualisations
