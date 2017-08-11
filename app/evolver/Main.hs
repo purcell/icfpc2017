@@ -11,6 +11,7 @@ import Data.List.Split (wordsBy)
 import qualified Data.Map as M
 import Data.Ord (comparing)
 import Data.Semigroup ((<>))
+import Data.Time.Clock
 import GamePlay
 import Lib (readMap)
 import Offline (dumpState)
@@ -46,8 +47,17 @@ main = do
             hPutStrLn stderr $
               "GAME " <> show gameNum <> ": " <>
               intercalate " => " (fst <$> lineup)
+            startTime <- getCurrentTime
             results <- runGame mapFile lineup
             printResults results
+            endTime <- getCurrentTime
+            let elapsed = diffUTCTime endTime startTime
+                numMoves = (snd . progress . prState . head) results
+            hPutStrLn stderr $
+              "Moves = " <> show numMoves <> ", Elapsed = " <> show elapsed <>
+              " (" <>
+              show (elapsed / fromIntegral numMoves) <>
+              "/move)"
             let curRanks =
                   M.fromList $
                   zip

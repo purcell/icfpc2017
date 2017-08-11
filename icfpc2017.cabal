@@ -63,6 +63,7 @@ executable evolver
                      , bytestring
                      , containers
                      , split
+                     , time
                      , icfpc2017
   default-language:    Haskell2010
 
