@@ -34,8 +34,54 @@ nextMoveMST s = (bestMove, s)
         _ -> error "unexpected claim state for best river"
     mp = GamePlay.map (initialState s)
     me = myPunterID s
+    riversFromMines = mstClaimableRiversFromMines (mines mp) riverClaims
+    closestRiversToMines = snd <$> sortBy (comparing fst) riversFromMines
+    bestRiver =
+      fromJust $
+      asum
+        [listToMaybe closestRiversToMines, (listToMaybe (S.toList unclaimed))]
+    riverClaims = claimStates s
+    claimState r = riverClaims M.! r
+    unclaimed = filterRiversByClaim riverClaims (== Unclaimed)
+
+nextMoveMSTSmart :: GameState -> (Move, GameState)
+nextMoveMSTSmart s = (bestMove, s)
+  where
+    bestMove =
+      case claimState bestRiver of
+        Unclaimed -> ClaimMove me bestRiver
+        Optionable -> Option me bestRiver
+        _ -> error "unexpected claim state for best river"
+    mp = GamePlay.map (initialState s)
+    me = myPunterID s
+    claimableRiversFromMines =
+      mstClaimableRiversFromMines (mines mp) riverClaims
+    riversNextToMines = snd <$> filter ((== 0) . fst) claimableRiversFromMines
+    riversOnHotPaths =
+      fmap fst $
+      takeWhile ((> 1) . snd) $
+      sortBy (flip (comparing snd)) $
+      M.toList (frequency (snd <$> claimableRiversFromMines))
+    bestRiver =
+      fromJust $
+      asum
+        [ listToMaybe riversOnHotPaths
+        , listToMaybe riversNextToMines
+        , listToMaybe (snd <$> claimableRiversFromMines)
+        , listToMaybe (S.toList unclaimed)
+        ]
+    riverClaims = claimStates s
+    claimState r = riverClaims M.! r
+    unclaimed = filterRiversByClaim riverClaims (== Unclaimed)
+
+mstClaimableRiversFromMines ::
+     Set SiteID -> M.Map River ClaimState -> [(Int, River)]
+mstClaimableRiversFromMines allMines riverClaims =
+  filter ((`S.member` claimableRivers) . snd) $
+  concatMap (zip [0 ..] . pathToRivers) pathsFromMines
+  where
+    claimableRivers = filterRiversByClaim riverClaims claimable
     g = graphOfRivers (filterRiversByClaim riverClaims potentiallyNavigable)
-    allMines = mines mp
     weightedGraph = G.emap edgeWeight g
     edgeWeight r =
       case claimState r of
@@ -47,18 +93,7 @@ nextMoveMST s = (bestMove, s)
     pathsFromMines =
       (fmap fst . G.unLPath) <$>
       concatMap (`MST.msTreeAt` weightedGraph) (S.toList allMines)
-    riversFromMines :: [(Int, River)]
-    riversFromMines = concatMap (zip [0 ..] . pathToRivers) pathsFromMines
-    closestRiversToMines = snd <$> sortBy (comparing fst) riversFromMines
-    bestRiverOnMST :: Maybe River
-    bestRiverOnMST =
-      listToMaybe (filter (`S.member` claimableRivers) closestRiversToMines)
-    bestRiver =
-      fromJust $ asum [bestRiverOnMST, (listToMaybe (S.toList unclaimed))]
-    riverClaims = claimStates s
     claimState r = riverClaims M.! r
-    claimableRivers = filterRiversByClaim riverClaims claimable
-    unclaimed = filterRiversByClaim riverClaims (== Unclaimed)
 
 data Weights = Weights
   { wConnectedNewMine :: Int

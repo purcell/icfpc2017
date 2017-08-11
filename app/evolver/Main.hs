@@ -26,6 +26,7 @@ strategies =
   , ("Heuristic", nextMove (defaultWeights {wOnShortestMinePath = 0}))
   , ("HeuristicWithMineShortestPath", nextMove defaultWeights)
   , ("MST", nextMoveMST)
+  , ("MSTSmart", nextMoveMSTSmart)
   ]
 
 main :: IO ()
