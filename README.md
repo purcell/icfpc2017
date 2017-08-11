@@ -60,6 +60,8 @@ This hard failure was a sad twist at this late stage, so in a stroke of evil gen
 
 Who knows if it will run properly and work for the judges? We're keenly awaiting the scores.
 
+_Postscript: the failure was because the strategy had successfully reached all the target sites, and didn't know how to choose arbitrarily between the remaining unimportant ones._
+
 ## Conclusions and lessons learned
 
 Needless to say, the contest was a lot of fun, for all sorts of reasons. Having a great team is the biggest one -- in our case, we all had compatible work styles and complementary skills and thinking styles. Plus, our food delivery preferences were closely aligned. (Thanks team!)
