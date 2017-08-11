@@ -38,47 +38,6 @@ init flags =
                 Debug.crash err
 
 
-claimForRiver : Model -> River -> Maybe ClaimMove
-claimForRiver model river =
-    let
-        claims =
-            selectClaims model.moves
-
-        isForRiver claim =
-            case claim of
-                Nothing ->
-                    False
-
-                Just c ->
-                    c.source == river.source && c.target == river.target
-    in
-        oneOf (List.filter isForRiver claims)
-
-
-selectClaims : List Move -> List (Maybe ClaimMove)
-selectClaims moves =
-    let
-        extractClaim claim =
-            case claim of
-                Pass _ ->
-                    Nothing
-
-                Claim claim ->
-                    Just claim
-    in
-        List.map extractClaim moves
-
-
-selectClaim : Move -> Maybe ClaimMove
-selectClaim move =
-    case move of
-        Pass _ ->
-            Nothing
-
-        Claim claim ->
-            Just claim
-
-
 
 -- UPDATE
 
@@ -98,21 +57,10 @@ update msg model =
             { model | animate = not model.animate } ! []
 
         Tick newTime ->
-            let
-                newNumberOfMovesToShow =
-                    if model.animate then
-                        model.movesToShow + 1
-                    else
-                        model.movesToShow
-            in
-                if newNumberOfMovesToShow > List.length model.moves then
-                    toggleAnimation model ! []
-                else
-                    { model
-                        | time = newTime
-                        , movesToShow = newNumberOfMovesToShow
-                    }
-                        ! []
+            if model.animate then
+                stepForward { model | time = newTime } ! []
+            else
+                { model | time = newTime } ! []
 
         UpdateAnimationSpeed newSpeed ->
             case String.toFloat newSpeed of
@@ -123,14 +71,7 @@ update msg model =
                     model ! []
 
         StepForward ->
-            let
-                newNumberOfMovesToShow =
-                    if model.movesToShow == List.length model.moves then
-                        0
-                    else
-                        model.movesToShow + 1
-            in
-                { model | movesToShow = newNumberOfMovesToShow } ! []
+            stepForward model ! []
 
         StepBack ->
             let
@@ -146,9 +87,16 @@ update msg model =
                     { model | movesToShow = newNumberOfMovesToShow } ! []
 
 
-toggleAnimation : Model -> Model
-toggleAnimation model =
-    { model | animate = not model.animate }
+stepForward : Model -> Model
+stepForward model =
+    let
+        newNumberOfMovesToShow =
+            if model.movesToShow == List.length model.moves then
+                0
+            else
+                model.movesToShow + 1
+    in
+        { model | movesToShow = newNumberOfMovesToShow }
 
 
 
@@ -219,7 +167,7 @@ animationSpeedSlider model =
     div []
         [ input
             [ type_ "range"
-            , Html.Attributes.min "0"
+            , Html.Attributes.min "20"
             , Html.Attributes.max "100"
             , value (toString model.animationSpeed)
             , onInput UpdateAnimationSpeed
@@ -305,6 +253,16 @@ viewRivers model =
             (List.map (viewRiver model animatedRivers) rivers)
 
 
+selectClaim : Move -> Maybe ClaimMove
+selectClaim move =
+    case move of
+        Pass _ ->
+            Nothing
+
+        Claim claim ->
+            Just claim
+
+
 riverIsAnimated : List ClaimMove -> River -> Bool
 riverIsAnimated animatedClaims river =
     let
@@ -369,6 +327,37 @@ endOfRiver sites river end xOrY attr =
 
             Just site ->
                 attr (toString (xOrY site))
+
+
+claimForRiver : Model -> River -> Maybe ClaimMove
+claimForRiver model river =
+    let
+        claims =
+            selectClaims model.moves
+
+        isForRiver claim =
+            case claim of
+                Nothing ->
+                    False
+
+                Just c ->
+                    c.source == river.source && c.target == river.target
+    in
+        oneOf (List.filter isForRiver claims)
+
+
+selectClaims : List Move -> List (Maybe ClaimMove)
+selectClaims moves =
+    let
+        extractClaim claim =
+            case claim of
+                Pass _ ->
+                    Nothing
+
+                Claim claim ->
+                    Just claim
+    in
+        List.map extractClaim moves
 
 
 viewSites : Model -> S.Svg Msg
