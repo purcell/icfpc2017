@@ -1,13 +1,13 @@
 module Visualiser exposing (..)
 
 import Html exposing (..)
-import Html.Attributes exposing (style, value)
+import Html.Attributes exposing (style, value, type_, min, max)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as Json
 import Set
 import Svg as S
 import Svg.Attributes as A
-import Time exposing (Time, millisecond)
+import Time exposing (Time, second)
 import Decoders exposing (..)
 import Types exposing (..)
 import Exts.Maybe exposing (oneOf)
@@ -29,8 +29,8 @@ init flags =
                 , state = { state | map = normaliseCoords state.map }
                 , time = 0
                 , animate = False
-                , movesToShow = List.length moves
-                , animationSpeed = 100
+                , movesToShow = 0
+                , animationSpeed = 50
                 }
                     ! []
 
@@ -69,6 +69,16 @@ selectClaims moves =
         List.map extractClaim moves
 
 
+selectClaim : Move -> Maybe ClaimMove
+selectClaim move =
+    case move of
+        Pass _ ->
+            Nothing
+
+        Claim claim ->
+            Just claim
+
+
 
 -- UPDATE
 
@@ -76,25 +86,16 @@ selectClaims moves =
 type Msg
     = ToggleAnimation
     | Tick Time
-    | ChangeAnimationSpeed String
+    | UpdateAnimationSpeed String
+    | StepForward
+    | StepBack
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ToggleAnimation ->
-            let
-                newNumberOfMovesToShow =
-                    if model.animate then
-                        List.length model.moves
-                    else
-                        0
-            in
-                { model
-                    | animate = not model.animate
-                    , movesToShow = newNumberOfMovesToShow
-                }
-                    ! []
+            { model | animate = not model.animate } ! []
 
         Tick newTime ->
             let
@@ -113,13 +114,36 @@ update msg model =
                     }
                         ! []
 
-        ChangeAnimationSpeed newSpeed ->
+        UpdateAnimationSpeed newSpeed ->
             case String.toFloat newSpeed of
                 Ok speed ->
                     { model | animationSpeed = speed } ! []
 
                 Err _ ->
                     model ! []
+
+        StepForward ->
+            let
+                newNumberOfMovesToShow =
+                    if model.movesToShow == List.length model.moves then
+                        0
+                    else
+                        model.movesToShow + 1
+            in
+                { model | movesToShow = newNumberOfMovesToShow } ! []
+
+        StepBack ->
+            let
+                newNumberOfMovesToShow =
+                    if model.movesToShow == 0 then
+                        List.length model.moves
+                    else
+                        model.movesToShow - 1
+            in
+                if newNumberOfMovesToShow > List.length model.moves then
+                    model ! []
+                else
+                    { model | movesToShow = newNumberOfMovesToShow } ! []
 
 
 toggleAnimation : Model -> Model
@@ -133,21 +157,49 @@ toggleAnimation model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ animateButton model
-        , animationSpeedInput model
-        , p [] [ text ("Moves played: " ++ toString model.movesToShow) ]
-        , (S.svg
-            [ A.version "1.1"
-            , A.viewBox "-1 -1 2 2"
+    let
+        map =
+            model.state.map
+
+        rivers =
+            map.rivers
+
+        sites =
+            map.sites
+
+        riversAlreadyAnimated =
+            List.take model.movesToShow rivers
+
+        riversYetToBeAnimated =
+            List.drop model.movesToShow rivers
+    in
+        div []
+            [ viewLegend model
+            , viewDebugInfo model
+            , stepFowardButton model
+            , stepBackButton model
+            , animateButton model
+            , animationSpeedSlider model
+            , p [] [ text ("Moves played: " ++ toString model.movesToShow) ]
+            , (S.svg
+                [ A.version "1.1"
+                , A.viewBox "-1 -1 2 2"
+                ]
+                [ viewRivers model
+                , viewSites model
+                ]
+              )
             ]
-            [ viewRivers model
-            , viewSites model
-            ]
-          )
-        , viewLegend model
-        , viewDebugInfo model
-        ]
+
+
+stepFowardButton : Model -> Html Msg
+stepFowardButton model =
+    button [ onClick StepForward ] [ text "Step forward" ]
+
+
+stepBackButton : Model -> Html Msg
+stepBackButton model =
+    button [ onClick StepBack ] [ text "Step back" ]
 
 
 animateButton : Model -> Html Msg
@@ -162,9 +214,19 @@ animateButton model =
         button [ onClick ToggleAnimation ] [ text description ]
 
 
-animationSpeedInput : Model -> Html Msg
-animationSpeedInput model =
-    input [ onInput ChangeAnimationSpeed, value (toString model.animationSpeed) ] []
+animationSpeedSlider : Model -> Html Msg
+animationSpeedSlider model =
+    div []
+        [ input
+            [ type_ "range"
+            , Html.Attributes.min "0"
+            , Html.Attributes.max "100"
+            , value (toString model.animationSpeed)
+            , onInput UpdateAnimationSpeed
+            ]
+            []
+        , text ("Move every " ++ (toString (model.animationSpeed * 0.01)) ++ " seconds")
+        ]
 
 
 viewDebugInfo : Model -> Html Msg
@@ -188,19 +250,7 @@ viewDebugInfo model =
             , p [] [ text ("Number of sites: " ++ toString (List.length sites)) ]
             , p [] [ text ("Number of mines: " ++ toString (List.length mines)) ]
             , p [] [ text ("Number of claims: " ++ toString (List.length claims)) ]
-            , debugMoves model
             ]
-
-
-debugMoves : Model -> Html Msg
-debugMoves model =
-    div []
-        (List.map debugMove model.moves)
-
-
-debugMove : Move -> Html Msg
-debugMove move =
-    p [] [ text (toString move) ]
 
 
 viewLegend : Model -> Html Msg
@@ -241,15 +291,35 @@ viewRivers model =
         sites =
             map.sites
 
-        riversAlreadyAnimated =
-            List.take model.movesToShow rivers
+        animatedMoves =
+            List.take model.movesToShow model.moves
 
-        riversYetToBeAnimated =
-            List.drop model.movesToShow rivers
+        animatedClaims =
+            List.filterMap selectClaim animatedMoves
+
+        animatedRivers =
+            List.filter (riverIsAnimated animatedClaims) rivers
     in
         S.svg
             [ A.x "-1", A.y "-1", A.overflow "visible" ]
-            (List.map (viewRiver model riversAlreadyAnimated) rivers)
+            (List.map (viewRiver model animatedRivers) rivers)
+
+
+riverIsAnimated : List ClaimMove -> River -> Bool
+riverIsAnimated animatedClaims river =
+    let
+        riverMatchesAnimatedClaim claim =
+            river.source == claim.source && river.target == claim.target
+    in
+        case
+            List.head
+                (List.filter riverMatchesAnimatedClaim animatedClaims)
+        of
+            Nothing ->
+                False
+
+            _ ->
+                True
 
 
 viewRiver : Model -> List River -> River -> S.Svg Msg
@@ -368,4 +438,4 @@ colourForPunter punter =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every (model.animationSpeed * millisecond) Tick
+    Time.every ((model.animationSpeed * 0.01) * second) Tick
