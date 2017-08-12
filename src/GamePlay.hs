@@ -34,8 +34,8 @@ data SetupState = SetupState
   } deriving (Generic, FromJSON, ToJSON)
 
 data Claim = Claim
-  { claimPunter :: PunterID
-  , claimRiver :: River
+  { claimPunter :: !PunterID
+  , claimRiver :: !River
   } deriving (Eq, Ord, Show)
 
 claims :: GameState -> Set Claim

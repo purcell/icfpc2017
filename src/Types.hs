@@ -15,7 +15,7 @@ type SiteID = Int
 type PunterID = Int
 
 data Site = Site
-  { id :: SiteID
+  { id :: !SiteID
   , loc :: Maybe (Double, Double)
   } deriving (Eq, Ord, Show)
 
@@ -38,8 +38,8 @@ instance ToJSON Site where
        _ -> [])
 
 data River = River
-  { source :: SiteID
-  , target :: SiteID
+  { source :: !SiteID
+  , target :: !SiteID
   } deriving (Show, Generic, FromJSON, ToJSON)
 
 instance Eq River where
